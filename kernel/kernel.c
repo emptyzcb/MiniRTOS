@@ -1,0 +1,93 @@
+/*
+ * kernel.c - OS Kernel Core
+ *
+ * Initializes all kernel subsystems and manages the system tick.
+ */
+
+#include "kernel.h"
+#include "heap4.h"
+#include "task.h"
+#include "scheduler.h"
+#include "port.h"
+#include "os_config.h"
+#include <string.h>
+
+#define OS_VERSION "MiniOS v0.1.0"
+
+/* ========== Internal Data ========== */
+
+static os_tick_t system_tick = 0;
+static bool kernel_initialized = false;
+
+/* ========== Public API ========== */
+
+void os_kernel_init(void)
+{
+    if (kernel_initialized) {
+        return;
+    }
+
+    /* Initialize heap */
+    os_heap_init();
+
+    /* Initialize task subsystem */
+    os_task_init_ready_list();
+
+    /* Initialize scheduler */
+    os_sched_init();
+
+    kernel_initialized = true;
+}
+
+void os_kernel_start(void)
+{
+    if (!kernel_initialized) {
+        return;
+    }
+
+    /* Set up SysTick timer */
+    os_port_systick_init(OS_CONFIG_TICK_RATE_HZ);
+
+    /* Start the scheduler (never returns) */
+    os_sched_start();
+}
+
+os_tick_t os_kernel_get_tick(void)
+{
+    return system_tick;
+}
+
+void os_kernel_tick_increment(void)
+{
+    system_tick++;
+
+    /* Process task delays */
+    os_task_tick();
+
+    /* Check if a context switch is needed */
+    os_sched_select_next();
+}
+
+const char* os_kernel_get_version(void)
+{
+    return OS_VERSION;
+}
+
+void os_assert_failed(const char *file, uint32_t line)
+{
+    (void)file;
+    (void)line;
+
+    /* Disable all interrupts */
+    os_sched_enter_critical();
+
+    /* Debug output */
+    os_port_debug_print("ASSERT FAILED: ");
+    os_port_debug_print(file);
+    os_port_debug_print("\r\n");
+
+    /* Halt */
+    while (1) {
+        __asm volatile("bkpt #0");
+    }
+}
