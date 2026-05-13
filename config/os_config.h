@@ -39,6 +39,7 @@
 
 #define OS_CONFIG_ASSERT_ENABLE         1
 #define OS_CONFIG_DEBUG_LOG_ENABLE      1
+#define OS_CONFIG_STACK_OVERFLOW_CHECK  1
 
 #if OS_CONFIG_ASSERT_ENABLE
     #define OS_ASSERT(expr)  do { if (!(expr)) os_assert_failed(__FILE__, __LINE__); } while(0)

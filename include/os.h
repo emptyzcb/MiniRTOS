@@ -36,4 +36,12 @@
 /* Yield current task */
 #define OS_YIELD()              os_sched_yield()
 
+/* Delete current task (self-deletion) */
+#define OS_TASK_DELETE_SELF()    os_task_delete(NULL)
+
+/* Query task info */
+#define OS_TASK_GET_STATE(h)    os_task_get_state(h)
+#define OS_TASK_GET_PRIO(h)     os_task_get_priority(h)
+#define OS_TASK_GET_COUNT()     os_task_get_count()
+
 #endif /* OS_H */

@@ -25,6 +25,9 @@ static os_ready_list_t ready_list[OS_CONFIG_NUM_PRIORITIES];
 /* Blocked list (tasks waiting on delay) */
 static os_tcb_t *blocked_list = NULL;
 
+/* Deferred delete list (tasks pending resource cleanup) */
+static os_tcb_t *deferred_delete_list = NULL;
+
 /* Task table for quick lookup */
 static os_tcb_t *task_table[OS_CONFIG_MAX_TASKS];
 static uint32_t task_count = 0;
@@ -45,13 +48,21 @@ static os_stack_t* prv_allocate_stack(uint32_t size)
 
 /*
  * Fill the stack with a known pattern for high-water mark detection.
+ * Also writes a canary at the stack bottom for overflow detection.
  */
 static void prv_fill_stack(os_stack_t *stack, uint32_t size)
 {
     uint32_t words = size / sizeof(os_stack_t);
+
+    /* Fill with high-water mark pattern */
     for (uint32_t i = 0; i < words; i++) {
         stack[i] = 0xA5A5A5A5;
     }
+
+#if OS_CONFIG_STACK_OVERFLOW_CHECK
+    /* Write canary at the bottom of the stack (lowest address) */
+    stack[0] = OS_STACK_CANARY_VALUE;
+#endif
 }
 
 /*
@@ -101,6 +112,7 @@ void os_task_init_ready_list(void)
         ready_list[i].count = 0;
     }
     blocked_list = NULL;
+    deferred_delete_list = NULL;
     task_count = 0;
     current_task_ptr = NULL;
 }
@@ -214,6 +226,7 @@ os_status_t os_task_create(os_task_func_t func,
     tcb->param       = param;
     tcb->next        = NULL;
     tcb->prev        = NULL;
+    tcb->pending_delete = 0;
     tcb->stack_high_water = 0;
 
     /* Copy name */
@@ -241,14 +254,62 @@ os_status_t os_task_create(os_task_func_t func,
     return OS_OK;
 }
 
+os_status_t os_task_create_suspended(os_task_func_t func,
+                                     const char *name,
+                                     void *param,
+                                     os_prio_t priority,
+                                     os_stack_t *stack_buf,
+                                     uint32_t stack_size,
+                                     os_task_handle_t *handle)
+{
+    os_status_t ret;
+
+    /* Create the task normally (goes to READY list) */
+    ret = os_task_create(func, name, param, priority, stack_buf, stack_size, handle);
+    if (ret != OS_OK) return ret;
+
+    /* Immediately suspend it */
+    if (handle != NULL) {
+        os_task_suspend(*handle);
+    }
+
+    return OS_OK;
+}
+
 os_status_t os_task_delete(os_task_handle_t handle)
 {
     os_tcb_t *tcb = (os_tcb_t*)handle;
 
-    if (tcb == NULL || tcb == current_task_ptr) {
-        /* Deleting self: schedule removal, actual free happens in context switch */
-        return OS_ERR_PARAM;
+    if (handle == NULL) {
+        /* Self-deletion: cannot free own stack while running on it */
+        tcb = current_task_ptr;
+        if (tcb == NULL) return OS_ERR_PARAM;
+
+        os_sched_enter_critical();
+
+        /* Remove from ready list */
+        os_task_remove_from_ready(tcb);
+        tcb->state = OS_TASK_DELETED;
+        tcb->pending_delete = 1;
+
+        /* Add to deferred delete list for cleanup after context switch */
+        tcb->next = deferred_delete_list;
+        deferred_delete_list = tcb;
+
+        os_sched_exit_critical();
+
+        /* Yield to trigger context switch; cleanup happens later */
+        os_sched_yield();
+        return OS_OK;
     }
+
+    if (tcb == current_task_ptr) {
+        /* Same as NULL case: self-deletion */
+        return os_task_delete(NULL);
+    }
+
+    /* Deleting another task */
+    os_sched_enter_critical();
 
     /* Remove from ready list if ready */
     if (tcb->state == OS_TASK_READY) {
@@ -262,6 +323,8 @@ os_status_t os_task_delete(os_task_handle_t handle)
         os_heap_free(tcb->stack_base);
     }
     os_heap_free(tcb);
+
+    os_sched_exit_critical();
 
     return OS_OK;
 }
@@ -402,6 +465,14 @@ void os_task_tick(void)
             current_task_ptr->stack_high_water = used;
         }
     }
+
+#if OS_CONFIG_STACK_OVERFLOW_CHECK
+    /* Check for stack overflow */
+    os_task_check_stack_overflow();
+#endif
+
+    /* Process deferred task deletions */
+    os_task_process_deferred_delete();
 }
 
 uint32_t os_task_get_stack_high_water(os_task_handle_t handle)
@@ -409,4 +480,67 @@ uint32_t os_task_get_stack_high_water(os_task_handle_t handle)
     os_tcb_t *tcb = (os_tcb_t*)handle;
     if (tcb == NULL) return 0;
     return tcb->stack_high_water;
+}
+
+/* ========== Deferred Delete Processing ========== */
+
+void os_task_process_deferred_delete(void)
+{
+    os_tcb_t *tcb;
+    os_tcb_t *next;
+
+    os_sched_enter_critical();
+
+    tcb = deferred_delete_list;
+    deferred_delete_list = NULL;
+
+    os_sched_exit_critical();
+
+    /* Free all deferred tasks outside of critical section */
+    while (tcb != NULL) {
+        next = tcb->next;
+
+        /* Free resources */
+        if (tcb->stack_base != idle_task_stack) {
+            os_heap_free(tcb->stack_base);
+        }
+        os_heap_free(tcb);
+
+        tcb = next;
+    }
+}
+
+/* ========== Stack Overflow Detection ========== */
+
+#if OS_CONFIG_STACK_OVERFLOW_CHECK
+void os_task_check_stack_overflow(void)
+{
+    if (current_task_ptr == NULL) return;
+
+    if (current_task_ptr->stack_base[0] != OS_STACK_CANARY_VALUE) {
+        /* Stack has overflowed into the canary area */
+        os_assert_failed(__FILE__, __LINE__);
+    }
+}
+#endif
+
+/* ========== Query APIs ========== */
+
+os_task_state_t os_task_get_state(os_task_handle_t handle)
+{
+    os_tcb_t *tcb = (os_tcb_t*)handle;
+    if (tcb == NULL) return OS_TASK_DELETED;
+    return tcb->state;
+}
+
+os_prio_t os_task_get_priority(os_task_handle_t handle)
+{
+    os_tcb_t *tcb = (os_tcb_t*)handle;
+    if (tcb == NULL) return OS_PRIO_LOWEST;
+    return tcb->priority;
+}
+
+uint32_t os_task_get_count(void)
+{
+    return task_count;
 }

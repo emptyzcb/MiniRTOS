@@ -4,6 +4,9 @@
 #include "os_types.h"
 #include "os_config.h"
 
+/* Stack overflow canary value (easy to spot in debugger) */
+#define OS_STACK_CANARY_VALUE       0xCCCCCCCCU
+
 /* ========== Task Control Block (TCB) ========== */
 
 typedef struct os_tcb {
@@ -21,6 +24,9 @@ typedef struct os_tcb {
     struct os_tcb       *next;
     struct os_tcb       *prev;
 
+    /* Deferred self-deletion flag */
+    uint8_t             pending_delete;
+
     /* For tracking stack high-water mark */
     uint32_t            stack_high_water;
 } os_tcb_t;
@@ -34,6 +40,14 @@ os_status_t os_task_create(os_task_func_t func,
                            os_stack_t *stack_buf,
                            uint32_t stack_size,
                            os_task_handle_t *handle);
+
+os_status_t os_task_create_suspended(os_task_func_t func,
+                                     const char *name,
+                                     void *param,
+                                     os_prio_t priority,
+                                     os_stack_t *stack_buf,
+                                     uint32_t stack_size,
+                                     os_task_handle_t *handle);
 
 os_status_t os_task_delete(os_task_handle_t handle);
 os_status_t os_task_suspend(os_task_handle_t handle);
@@ -58,5 +72,16 @@ void os_task_create_idle(void);
 
 /* Stack utilities */
 uint32_t os_task_get_stack_high_water(os_task_handle_t handle);
+
+/* Query APIs */
+os_task_state_t os_task_get_state(os_task_handle_t handle);
+os_prio_t os_task_get_priority(os_task_handle_t handle);
+uint32_t os_task_get_count(void);
+
+/* Deferred delete processing (called from os_task_tick) */
+void os_task_process_deferred_delete(void);
+
+/* Stack overflow check (called from os_task_tick) */
+void os_task_check_stack_overflow(void);
 
 #endif /* OS_TASK_H */
