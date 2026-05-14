@@ -8,6 +8,8 @@
 #include "task.h"
 #include "heap4.h"
 #include "scheduler.h"
+#include "kernel.h"
+#include "port.h"
 #include "os_config.h"
 #include <string.h>
 
@@ -36,7 +38,6 @@ static uint32_t task_count = 0;
 extern os_tcb_t *current_task_ptr;
 
 /* Idle task */
-static os_tcb_t idle_task_tcb;
 static os_stack_t idle_task_stack[OS_CONFIG_IDLE_STACK_SIZE / sizeof(os_stack_t)];
 
 /* ========== Internal Functions ========== */
@@ -90,7 +91,6 @@ static void idle_task_func(void *param)
 {
     (void)param;
     while (1) {
-        /* Could add: WFI (Wait For Interrupt) for power saving */
         __asm volatile("wfi");
     }
 }
@@ -228,6 +228,12 @@ os_status_t os_task_create(os_task_func_t func,
     tcb->prev        = NULL;
     tcb->pending_delete = 0;
     tcb->stack_high_water = 0;
+    tcb->blocked_on = NULL;
+    tcb->blocked_reason = OS_BLOCKED_NONE;
+    tcb->timed_out = 0;
+    tcb->event_wait_bits = 0;
+    tcb->event_wait_options = 0;
+    tcb->event_return_bits = 0;
 
     /* Copy name */
     if (name != NULL) {
@@ -449,6 +455,13 @@ void os_task_tick(void)
                 }
                 tcb->next = NULL;
                 tcb->prev = NULL;
+
+                /* If blocked on a sync object, mark timed out */
+                if (tcb->blocked_on != NULL) {
+                    tcb->timed_out = 1;
+                    tcb->blocked_on = NULL;
+                    tcb->blocked_reason = OS_BLOCKED_NONE;
+                }
 
                 /* Add back to ready list */
                 os_task_add_to_ready(tcb);

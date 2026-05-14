@@ -90,7 +90,6 @@ os_stack_t* os_port_stack_init(os_task_func_t func,
                                 uint32_t stack_size)
 {
     os_stack_t *sp;
-    uint32_t i;
 
     /* Align stack to 8-byte boundary (ARM AAPCS requirement) */
     sp = (os_stack_t*)((((uint32_t)stack_base + stack_size) + 7) & ~7UL);
@@ -198,11 +197,7 @@ void PendSV_Handler(void)
     __asm volatile(
         "cpsid i\n"                     /* Disable interrupts */
 
-        /* Is current task valid? */
         "mrs r0, psp\n"                 /* Get PSP (Process Stack Pointer) */
-        "tst r14, #0x10\n"              /* Check EXC_RETURN bit 4 */
-        "it eq\n"
-        "vstmdbeq r0!, {s16-s31}\n"     /* Save FPU regs if used */
 
         "stmdb r0!, {r4-r11}\n"         /* Save R4-R11 */
 
@@ -222,10 +217,6 @@ void PendSV_Handler(void)
 
         /* Restore context */
         "ldmia r0!, {r4-r11}\n"         /* Restore R4-R11 */
-
-        "tst r14, #0x10\n"
-        "it eq\n"
-        "vldmiaeq r0!, {s16-s31}\n"     /* Restore FPU regs if used */
 
         "msr psp, r0\n"                 /* Update PSP */
         "cpsie i\n"                     /* Re-enable interrupts */

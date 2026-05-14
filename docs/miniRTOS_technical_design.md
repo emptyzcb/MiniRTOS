@@ -1312,6 +1312,79 @@ PendSV_Handler:
 | `OS_TASK_GET_PRIO(h)` | `os_task_get_priority(h)` | 查询任务优先级 |
 | `OS_TASK_GET_COUNT()` | `os_task_get_count()` | 查询任务总数 |
 
+### 12.5 消息队列 API (v0.2.0)
+
+| 函数 | 说明 | 返回值 |
+|------|------|--------|
+| `os_queue_create(queue, item_size, max_items)` | 创建队列 | `os_status_t` |
+| `os_queue_delete(queue)` | 删除队列 | `os_status_t` |
+| `os_queue_send(queue, item, timeout)` | 发送 (阻塞) | `os_status_t` |
+| `os_queue_send_from_isr(queue, item)` | 发送 (ISR 安全) | `os_status_t` |
+| `os_queue_receive(queue, item, timeout)` | 接收 (阻塞) | `os_status_t` |
+| `os_queue_receive_from_isr(queue, item)` | 接收 (ISR 安全) | `os_status_t` |
+| `os_queue_peek(queue, item)` | 查看不取出 | `os_status_t` |
+| `os_queue_get_count(queue)` | 获取元素数 | `uint32_t` |
+| `os_queue_get_spaces(queue)` | 获取剩余空间 | `uint32_t` |
+| `os_queue_is_empty(queue)` | 是否为空 | `bool` |
+| `os_queue_is_full(queue)` | 是否已满 | `bool` |
+
+### 12.6 信号量 API (v0.2.0)
+
+| 函数 | 说明 | 返回值 |
+|------|------|--------|
+| `os_sem_create_binary(sem)` | 创建二值信号量 | `os_status_t` |
+| `os_sem_create_counting(sem, max, init)` | 创建计数信号量 | `os_status_t` |
+| `os_sem_delete(sem)` | 删除信号量 | `os_status_t` |
+| `os_sem_take(sem, timeout)` | 获取 (P 操作) | `os_status_t` |
+| `os_sem_give(sem)` | 释放 (V 操作) | `os_status_t` |
+| `os_sem_give_from_isr(sem)` | 释放 (ISR 安全) | `os_status_t` |
+| `os_sem_get_count(sem)` | 获取当前计数 | `uint32_t` |
+
+### 12.7 互斥锁 API (v0.2.0)
+
+| 函数 | 说明 | 返回值 |
+|------|------|--------|
+| `os_mutex_create(mutex)` | 创建互斥锁 | `os_status_t` |
+| `os_mutex_delete(mutex)` | 删除互斥锁 | `os_status_t` |
+| `os_mutex_lock(mutex, timeout)` | 加锁 (支持递归) | `os_status_t` |
+| `os_mutex_unlock(mutex)` | 解锁 | `os_status_t` |
+| `os_mutex_get_owner(mutex)` | 查询持有者 | `os_tcb_t*` |
+
+### 12.8 软件定时器 API (v0.2.0)
+
+| 函数 | 说明 | 返回值 |
+|------|------|--------|
+| `os_timer_create(timer, name, period, type, cb)` | 创建定时器 | `os_status_t` |
+| `os_timer_delete(timer, timeout)` | 删除定时器 | `os_status_t` |
+| `os_timer_start(timer, timeout)` | 启动定时器 | `os_status_t` |
+| `os_timer_stop(timer, timeout)` | 停止定时器 | `os_status_t` |
+| `os_timer_reset(timer, timeout)` | 重置定时器 | `os_status_t` |
+| `os_timer_change_period(timer, period, timeout)` | 修改周期 | `os_status_t` |
+| `os_timer_is_active(timer)` | 是否激活 | `bool` |
+
+### 12.9 事件标志组 API (v0.2.0)
+
+| 函数 | 说明 | 返回值 |
+|------|------|--------|
+| `os_eventgroup_create(eg)` | 创建事件组 | `os_status_t` |
+| `os_eventgroup_delete(eg)` | 删除事件组 | `os_status_t` |
+| `os_eventgroup_set_bits(eg, bits)` | 设置事件位 | `os_status_t` |
+| `os_eventgroup_set_bits_from_isr(eg, bits)` | 设置 (ISR 安全) | `os_status_t` |
+| `os_eventgroup_clear_bits(eg, bits)` | 清除事件位 | `os_status_t` |
+| `os_eventgroup_wait_bits(eg, bits, opts, timeout)` | 等待事件位 | `uint32_t` |
+| `os_eventgroup_get_bits(eg)` | 获取当前位 | `uint32_t` |
+
+### 12.10 新增便捷宏 (v0.2.0)
+
+| 宏 | 展开为 | 说明 |
+|----|--------|------|
+| `OS_QUEUE_SEND(q, item, t)` | `os_queue_send(q, item, t)` | 队列发送 |
+| `OS_QUEUE_RECEIVE(q, item, t)` | `os_queue_receive(q, item, t)` | 队列接收 |
+| `OS_SEM_GIVE(s)` | `os_sem_give(s)` | 信号量释放 |
+| `OS_SEM_TAKE(s, t)` | `os_sem_take(s, t)` | 信号量获取 |
+| `OS_MUTEX_LOCK(m, t)` | `os_mutex_lock(m, t)` | 互斥锁加锁 |
+| `OS_MUTEX_UNLOCK(m)` | `os_mutex_unlock(m)` | 互斥锁解锁 |
+
 ---
 
 ## 13. 构建系统
@@ -1382,47 +1455,50 @@ LDFLAGS = -T port/stm32f103.ld      # 链接脚本
 | RAM | 20 KB |
 | CPU | Cortex-M3, 72 MHz |
 
-### 14.2 RAM 使用分析
+### 14.2 RAM 使用分析 (v0.2.0)
 
 ```
 RAM (0x20000000, 20KB):
 +---------------------------+  0x20005000
 | MSP 栈 (中断栈)           |  1024 B
 +---------------------------+
-| newlib 堆                 |  512 B
+| newlib 堆                 |  256 B
 +---------------------------+
 | .bss 段                   |
-|   uc_heap[16KB + 16B]     |  ~16400 B
-|   其他全局变量             |  ~200 B
+|   uc_heap[14KB + 16B]     |  ~14352 B
+|   定时器服务栈             |  256 B
+|   其他全局变量             |  ~300 B
 +---------------------------+
-| .data 段                  |  ~50 B
+| .data 段                  |  ~0 B
 +---------------------------+  0x20000000
 
-总 RAM 使用: ~18.2 KB / 20 KB (91%)
+总 RAM 使用: ~18.5 KB / 20 KB (92.5%)
 ```
 
-### 14.3 任务栈分配
+### 14.3 任务栈分配 (v0.2.0)
 
 | 任务 | 栈大小 | 用途 |
 |------|--------|------|
-| Task1 (LED) | 512 B | LED 闪烁 |
-| Task2 (PROC) | 512 B | 数据处理 |
-| Task3 (MON) | 512 B | 系统监控 |
+| Task1 (PROD) | 512 B | 队列生产者 |
+| Task2 (CONS) | 512 B | 队列消费者 |
+| Task3 (EVT) | 512 B | 事件等待者 |
+| Task4 (MON) | 512 B | 系统监控 |
 | IDLE | 256 B | 空闲任务 |
-| **总计** | **1792 B** | |
+| TMR | 256 B | 定时器服务任务 |
+| **总计** | **2560 B** | |
 
-### 14.4 Flash 使用分析
+### 14.4 Flash 使用分析 (v0.2.0)
 
 ```
 Flash (0x08000000, 64KB):
 +---------------------------+
 | .isr_vector               |  ~240 B (60 个中断向量)
-| .text                     |  ~2.5 KB (代码)
-| .rodata                   |  ~100 B (常量)
-| .data init values         |  ~50 B
+| .text                     |  ~5.3 KB (代码)
+| .rodata                   |  ~200 B (常量)
+| .data init values         |  ~0 B
 +---------------------------+
 
-总 Flash 使用: ~3 KB / 64 KB (4.7%)
+总 Flash 使用: ~5.7 KB / 64 KB (8.9%)
 ```
 
 ---
@@ -1431,10 +1507,12 @@ Flash (0x08000000, 64KB):
 
 ### 15.1 功能限制
 
-1. **无同步原语**：没有互斥锁、信号量、事件标志组。任务间无法安全共享数据。
-2. **无消息传递**：没有消息队列、邮箱。任务间无法通信。
-3. **无软件定时器**：只能使用 SysTick 作为系统时钟源。
+1. ~~**无同步原语**：没有互斥锁、信号量、事件标志组。任务间无法安全共享数据。~~ ✅ 已实现 (v0.2.0)
+2. ~~**无消息传递**：没有消息队列、邮箱。任务间无法通信。~~ ✅ 已实现队列 (v0.2.0)
+3. ~~**无软件定时器**：只能使用 SysTick 作为系统时钟源。~~ ✅ 已实现 (v0.2.0)
 4. **不支持动态优先级**：优先级在创建时确定，运行时只能通过 `os_task_set_priority()` 手动修改。
+5. **无邮箱 (Mailbox)**：单元素消息队列，可基于队列实现。
+6. **无 Tickless Idle**：空闲时仍保持 SysTick 运行。
 
 ### 15.2 实现注意事项
 
@@ -1454,39 +1532,273 @@ Flash (0x08000000, 64KB):
 
 ## 16. 后续扩展方向
 
-### 第一优先级：核心同步机制
+### 第一优先级：核心同步机制 ✅ 已完成 (v0.2.0)
 
-| 功能 | 说明 |
-|------|------|
-| 互斥锁 (Mutex) | 任务间互斥访问共享资源，支持优先级继承 |
-| 信号量 (Semaphore) | 资源计数和任务同步 |
-| 消息队列 (Queue) | 任务间消息传递 |
+| 功能 | 说明 | 状态 |
+|------|------|------|
+| 互斥锁 (Mutex) | 任务间互斥访问共享资源，支持优先级继承 | ✅ |
+| 信号量 (Semaphore) | 二值/计数信号量，资源计数和任务同步 | ✅ |
+| 消息队列 (Queue) | 任务间消息传递，阻塞收发，ISR 安全 | ✅ |
 
 ### 第二优先级：定时与中断
 
-| 功能 | 说明 |
-|------|------|
-| 软件定时器 | 基于 tick 的回调定时器 |
-| 中断优先级管理 | NVIC 优先级分组配置 |
-| 中断嵌套支持 | 允许高优先级中断抢占低优先级 ISR |
+| 功能 | 说明 | 状态 |
+|------|------|------|
+| 软件定时器 | 基于 tick 的回调定时器，单次/自动重载 | ✅ |
+| 事件标志组 | 多条件组合等待 (等待任意/全部位) | ✅ |
+| 中断优先级管理 | NVIC 优先级分组配置 | 待实现 |
+| 中断嵌套支持 | 允许高优先级中断抢占低优先级 ISR | 待实现 |
 
 ### 第三优先级：调试与优化
 
-| 功能 | 说明 |
-|------|------|
-| ~~栈溢出检测~~ | ~~在 tick 中检查栈边界~~ (已实现) |
-| 运行时统计 | 每个任务的 CPU 占用率 |
-| 任务状态查看 | 导出所有任务的状态信息 |
-| Trace 支持 | 记录内核事件用于离线分析 |
+| 功能 | 说明 | 状态 |
+|------|------|------|
+| ~~栈溢出检测~~ | ~~在 tick 中检查栈边界~~ | ✅ |
+| 运行时统计 | 每个任务的 CPU 占用率 | 待实现 |
+| 任务状态查看 | 导出所有任务的状态信息 | 待实现 |
+| Trace 支持 | 记录内核事件用于离线分析 | 待实现 |
 
 ### 第四优先级：高级特性
 
-| 功能 | 说明 |
+| 功能 | 说明 | 状态 |
+|------|------|------|
+| Tickless Idle | 空闲时停止 SysTick，进一步降低功耗 | 待实现 |
+| 内存池 | 固定大小块分配器，O(1) 分配无碎片 | 待实现 |
+| 邮箱 (Mailbox) | 基于队列的单元素消息传递 | 待实现 |
+| 移植到 Cortex-M0/M4/M7 | 扩展硬件支持 | 待实现 |
+
+---
+
+## 17. 消息队列 (queue.c) — v0.2.0 新增
+
+### 17.1 设计目标
+
+实现任务间消息传递机制，支持阻塞发送/接收和 ISR 安全变体。
+
+### 17.2 数据结构
+
+```c
+typedef struct os_queue {
+    uint8_t     *buffer;            // 环形缓冲区 (堆分配)
+    uint32_t    item_size;          // 每个元素大小 (字节)
+    uint32_t    max_items;          // 最大元素数
+    uint32_t    count;              // 当前元素数
+    uint32_t    head;               // 下次读取位置 (字节索引)
+    uint32_t    tail;               // 下次写入位置 (字节索引)
+    uint32_t    buf_size;           // 缓冲区总大小
+    os_tcb_t    *send_wait_list;    // 发送等待链表 (优先级排序)
+    os_tcb_t    *recv_wait_list;    // 接收等待链表 (优先级排序)
+} os_queue_t;
+```
+
+### 17.3 环形缓冲区
+
+缓冲区为连续的字节数组，`head` 和 `tail` 为字节索引。写入时 `tail = (tail + item_size) % buf_size`，读取时同理。当 `count == max_items` 时队列满，`count == 0` 时队列空。
+
+### 17.4 阻塞机制
+
+- **发送阻塞**: 队列满时，任务加入 `send_wait_list`，设置 `blocked_on = queue`、`blocked_reason = OS_BLOCKED_ON_QUEUE_SEND`
+- **接收阻塞**: 队列空时，任务加入 `recv_wait_list`，设置 `blocked_reason = OS_BLOCKED_ON_QUEUE_RECV`
+- **超时处理**: `os_task_tick()` 递减 `delay_ticks`，到期时设置 `timed_out = 1` 并移回就绪链表
+
+### 17.5 唤醒策略
+
+发送成功后唤醒 `recv_wait_list` 中最高优先级任务；接收成功后唤醒 `send_wait_list` 中最高优先级任务。如果被唤醒任务优先级高于当前任务，触发调度。
+
+### 17.6 ISR 变体
+
+`os_queue_send_from_isr()` 和 `os_queue_receive_from_isr()` 使用 `os_port_enter_critical()` 直接操作，不调用 `os_sched_enter_critical()`。唤醒任务后调用 `os_sched_request_switch_from_isr()` 请求延迟切换。
+
+---
+
+## 18. 信号量 (semaphore.c) — v0.2.0 新增
+
+### 18.1 设计目标
+
+实现二值信号量 (任务同步) 和计数信号量 (资源计数)。
+
+### 18.2 数据结构
+
+```c
+typedef struct os_sem {
+    uint32_t    count;          // 当前计数
+    uint32_t    max_count;      // 最大计数 (1 = 二值)
+    os_tcb_t    *wait_list;     // 等待链表 (优先级排序)
+} os_sem_t;
+```
+
+### 18.3 直接传递模式
+
+`os_sem_give()` 的关键行为：如果有等待者，不增加计数，直接将最高优先级等待者移入就绪链表。这避免了计数超过实际可用资源的问题。
+
+### 18.4 API
+
+| 函数 | 说明 |
 |------|------|
-| Tickless Idle | 空闲时停止 SysTick，进一步降低功耗 |
-| 内存池 | 固定大小块分配器，O(1) 分配无碎片 |
-| 事件标志组 | 多条件组合等待 |
-| 移植到 Cortex-M0/M4/M7 | 扩展硬件支持 |
+| `os_sem_create_binary(sem)` | 创建二值信号量 (初始值 0) |
+| `os_sem_create_counting(sem, max, init)` | 创建计数信号量 |
+| `os_sem_delete(sem)` | 删除信号量 (唤醒所有等待者) |
+| `os_sem_take(sem, timeout)` | 获取 (P 操作) |
+| `os_sem_give(sem)` | 释放 (V 操作) |
+| `os_sem_give_from_isr(sem)` | ISR 安全释放 |
+
+---
+
+## 19. 互斥锁 (mutex.c) — v0.2.0 新增
+
+### 19.1 设计目标
+
+保护共享资源，通过优先级继承防止优先级反转。
+
+### 19.2 数据结构
+
+```c
+typedef struct os_mutex {
+    os_tcb_t    *owner;         // 持有者 (NULL = 空闲)
+    uint32_t    lock_count;     // 锁定深度 (支持递归)
+    os_prio_t   original_prio;  // 持有者原始优先级
+    os_tcb_t    *wait_list;     // 等待链表 (优先级排序)
+} os_mutex_t;
+```
+
+### 19.3 优先级继承
+
+**问题**: 任务 L (低优先级) 持有 mutex，任务 H (高优先级) 等待 mutex，任务 M (中优先级) 抢占 L。此时 H 被 M 间接阻塞 (优先级反转)。
+
+**解决**: 当 H 等待 mutex 时，临时将 L 的优先级提升到 H 的级别，防止 M 抢占 L。
+
+**时机**:
+- **提升**: `os_mutex_lock()` 中，如果当前任务优先级高于持有者
+- **恢复**: `os_mutex_unlock()` 中，锁计数降为 0 时恢复原始优先级
+
+### 19.4 递归锁定
+
+同一任务可以多次 `os_mutex_lock()`，每次 `lock_count++`。需要对应次数的 `os_mutex_unlock()` 才能完全释放。不同任务尝试加锁会阻塞。
+
+### 19.5 所有权转移
+
+`os_mutex_unlock()` 完全释放后，如果有等待者，自动将所有权转移给最高优先级等待者 (设置 `owner`、`lock_count`、`original_prio`)。
+
+---
+
+## 20. 软件定时器 (timer.c) — v0.2.0 新增
+
+### 20.1 设计目标
+
+基于系统 tick 的回调定时器，支持单次和自动重载模式。
+
+### 20.2 架构
+
+```
+SysTick ISR
+  └─> os_timer_tick()        // 递减定时器，到期移入 expired_list
+        └─> os_sem_give()    // 唤醒定时器服务任务
+
+定时器服务任务 (TMR, 低优先级)
+  └─> os_sem_take()          // 等待信号量
+  └─> 遍历 expired_list      // 调用每个到期定时器的回调
+```
+
+### 20.3 活跃定时器链表
+
+定时器按 `remaining` 升序排列在 `active_timer_list` 中。每个定时器的 `remaining` 是相对于前一个定时器的差值 (delta list)，这样只需递减链表头的计数器。
+
+### 20.4 数据结构
+
+```c
+typedef struct os_timer {
+    os_timer_callback_t callback;   // 回调函数
+    os_tick_t           period;     // 周期 (tick)
+    os_tick_t           remaining;  // 相对剩余 tick
+    os_timer_type_t     type;       // ONE_SHOT / AUTO_RELOAD
+    bool                active;     // 是否激活
+    struct os_timer     *next;      // 链表指针
+} os_timer_t;
+```
+
+### 20.5 回调执行上下文
+
+回调在定时器服务任务中执行 (非 ISR 上下文)，因此可以调用阻塞 API (如 `os_queue_send()`)。
+
+---
+
+## 21. 事件标志组 (eventgroup.c) — v0.2.0 新增
+
+### 21.1 设计目标
+
+32 位事件标志，支持等待任意位或全部位满足。
+
+### 21.2 数据结构
+
+```c
+typedef struct os_eventgroup {
+    uint32_t    bits;           // 当前事件位
+    os_tcb_t    *wait_list;     // 等待链表
+} os_eventgroup_t;
+```
+
+### 21.3 等待选项
+
+| 选项 | 说明 |
+|------|------|
+| `OS_EVENT_WAIT_ANY` | 任意请求位满足即唤醒 (默认) |
+| `OS_EVENT_WAIT_ALL` | 所有请求位满足才唤醒 |
+| `OS_EVENT_CLEAR_ON_EXIT` | 唤醒时清除匹配位 |
+
+### 21.4 TCB 扩展字段
+
+事件等待需要在 TCB 中存储等待模式：
+
+```c
+uint32_t event_wait_bits;     // 等待的位
+uint32_t event_wait_options;  // 等待选项
+uint32_t event_return_bits;   // 唤醒时的 bits 值
+```
+
+### 21.5 set_bits 唤醒逻辑
+
+`os_eventgroup_set_bits()` 设置位后，遍历 `wait_list` 检查每个任务的等待条件。满足条件的任务被移入就绪链表，如果 `CLEAR_ON_EXIT` 则清除对应位。多个任务可能在一次 set_bits 中被唤醒。
+
+---
+
+## 22. TCB 扩展 — v0.2.0 新增
+
+### 22.1 新增字段
+
+为支持同步原语的阻塞/超时机制，TCB 新增以下字段：
+
+```c
+/* 阻塞对象追踪 */
+void    *blocked_on;        // 阻塞在哪个对象上
+uint8_t blocked_reason;     // 阻塞原因 (os_blocked_reason_t)
+uint8_t timed_out;          // 超时标志 (tick 处理器设置)
+
+/* 事件组等待状态 */
+uint32_t event_wait_bits;
+uint32_t event_wait_options;
+uint32_t event_return_bits;
+```
+
+### 22.2 阻塞原因枚举
+
+```c
+typedef enum {
+    OS_BLOCKED_NONE             = 0,
+    OS_BLOCKED_ON_QUEUE_SEND    = 1,
+    OS_BLOCKED_ON_QUEUE_RECV    = 2,
+    OS_BLOCKED_ON_SEM_TAKE      = 3,
+    OS_BLOCKED_ON_MUTEX_LOCK    = 4,
+    OS_BLOCKED_ON_EVENT_WAIT    = 5,
+} os_blocked_reason_t;
+```
+
+### 22.3 超时处理流程
+
+1. 任务阻塞时设置 `blocked_on`、`blocked_reason`、`delay_ticks`
+2. `os_task_tick()` 递减 `delay_ticks`
+3. 到期时设置 `timed_out = 1`，清除 `blocked_on`
+4. 任务移入就绪链表
+5. API 函数检查 `timed_out` 返回 `OS_ERR_TIMEOUT`
 
 ---
 
@@ -1508,6 +1820,13 @@ Flash (0x08000000, 64KB):
 | High-Water Mark | 高水位标记 (历史最大使用量) |
 | WFI | Wait For Interrupt，等待中断 (低功耗指令) |
 | xPSR | Program Status Register (包含 Thumb 模式位) |
+| Mutex | Mutual Exclusion，互斥锁 |
+| Semaphore | 信号量，用于同步和资源计数 |
+| Queue | 消息队列，用于任务间通信 |
+| Event Group | 事件标志组，多条件同步 |
+| Priority Inheritance | 优先级继承，防止优先级反转 |
+| Delta List | 差值链表，定时器按相对时间排序 |
+| Ring Buffer | 环形缓冲区，队列的底层数据结构 |
 
 ---
 

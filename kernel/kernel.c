@@ -12,7 +12,11 @@
 #include "os_config.h"
 #include <string.h>
 
-#define OS_VERSION "MiniOS v0.1.0"
+#if OS_CONFIG_USE_SOFTWARE_TIMERS
+#include "timer.h"
+#endif
+
+#define OS_VERSION "MiniOS v0.2.0"
 
 /* ========== Internal Data ========== */
 
@@ -35,6 +39,11 @@ void os_kernel_init(void)
 
     /* Initialize scheduler */
     os_sched_init();
+
+#if OS_CONFIG_USE_SOFTWARE_TIMERS
+    /* Initialize timer subsystem */
+    os_timer_init();
+#endif
 
     kernel_initialized = true;
 }
@@ -63,6 +72,11 @@ void os_kernel_tick_increment(void)
 
     /* Process task delays */
     os_task_tick();
+
+#if OS_CONFIG_USE_SOFTWARE_TIMERS
+    /* Process software timers */
+    os_timer_tick();
+#endif
 
     /* Check if a context switch is needed */
     os_sched_select_next();

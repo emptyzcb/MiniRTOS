@@ -30,6 +30,11 @@ C_SOURCES =  \
 	kernel/task.c \
 	kernel/scheduler.c \
 	kernel/kernel.c \
+	kernel/queue.c \
+	kernel/semaphore.c \
+	kernel/mutex.c \
+	kernel/timer.c \
+	kernel/eventgroup.c \
 	port/port.c \
 	app/main.c
 
@@ -60,8 +65,7 @@ LDSCRIPT = port/stm32f103.ld
 LDFLAGS = $(MCU) -T$(LDSCRIPT)
 LDFLAGS += -Wl,--gc-sections
 LDFLAGS += -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref
-LDFLAGS += --specs=nosys.specs --specs=nano.specs
-LDFLAGS += -lc -lm -lnosys
+LDFLAGS += -nostartfiles -lc -lm -lnosys
 
 # Object files
 OBJECTS  = $(addprefix $(BUILD_DIR)/,$(C_SOURCES:.c=.o))

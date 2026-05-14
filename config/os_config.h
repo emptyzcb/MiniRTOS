@@ -30,10 +30,28 @@
 /* ========== Heap-4 Configuration ========== */
 
 /* Total heap size in bytes */
-#define OS_CONFIG_HEAP_SIZE             (16 * 1024)
+#define OS_CONFIG_HEAP_SIZE             (14 * 1024)
 
 /* Minimum block size for heap alignment */
 #define OS_CONFIG_HEAP_ALIGNMENT        8
+
+/* ========== Synchronization Primitives ========== */
+
+/* Queue */
+#define OS_CONFIG_USE_QUEUE             1
+
+/* Semaphore */
+#define OS_CONFIG_USE_SEMAPHORE         1
+
+/* Mutex */
+#define OS_CONFIG_USE_MUTEX             1
+
+/* Software Timer */
+#define OS_CONFIG_USE_SOFTWARE_TIMERS   1
+#define OS_CONFIG_TIMER_SERVICE_STACK   256
+
+/* Event Group */
+#define OS_CONFIG_USE_EVENTGROUP        1
 
 /* ========== Debug & Assert ========== */
 

@@ -15,6 +15,26 @@
 #include "scheduler.h"
 #include "port.h"
 
+#if OS_CONFIG_USE_QUEUE
+#include "queue.h"
+#endif
+
+#if OS_CONFIG_USE_SEMAPHORE
+#include "semaphore.h"
+#endif
+
+#if OS_CONFIG_USE_MUTEX
+#include "mutex.h"
+#endif
+
+#if OS_CONFIG_USE_SOFTWARE_TIMERS
+#include "timer.h"
+#endif
+
+#if OS_CONFIG_USE_EVENTGROUP
+#include "eventgroup.h"
+#endif
+
 /* ========== Convenience Macros ========== */
 
 /* Delay the current task */
@@ -43,5 +63,23 @@
 #define OS_TASK_GET_STATE(h)    os_task_get_state(h)
 #define OS_TASK_GET_PRIO(h)     os_task_get_priority(h)
 #define OS_TASK_GET_COUNT()     os_task_get_count()
+
+/* Queue convenience macros */
+#if OS_CONFIG_USE_QUEUE
+#define OS_QUEUE_SEND(q, item, t)       os_queue_send(q, item, t)
+#define OS_QUEUE_RECEIVE(q, item, t)    os_queue_receive(q, item, t)
+#endif
+
+/* Semaphore convenience macros */
+#if OS_CONFIG_USE_SEMAPHORE
+#define OS_SEM_GIVE(s)                  os_sem_give(s)
+#define OS_SEM_TAKE(s, t)              os_sem_take(s, t)
+#endif
+
+/* Mutex convenience macros */
+#if OS_CONFIG_USE_MUTEX
+#define OS_MUTEX_LOCK(m, t)            os_mutex_lock(m, t)
+#define OS_MUTEX_UNLOCK(m)             os_mutex_unlock(m)
+#endif
 
 #endif /* OS_H */

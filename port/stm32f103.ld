@@ -10,7 +10,7 @@ ENTRY(Reset_Handler)
 _estack = ORIGIN(RAM) + LENGTH(RAM);
 
 /* Generate a link error if heap and stack don't fit */
-_Min_Heap_Size  = 0x200;  /* 512 bytes */
+_Min_Heap_Size  = 0x100;  /* 256 bytes */
 _Min_Stack_Size = 0x400;  /* 1024 bytes */
 
 /* Memory definition */

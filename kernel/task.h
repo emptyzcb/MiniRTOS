@@ -29,6 +29,16 @@ typedef struct os_tcb {
 
     /* For tracking stack high-water mark */
     uint32_t            stack_high_water;
+
+    /* Blocked-on-object tracking (for queue/sem/mutex/eventgroup with timeout) */
+    void                *blocked_on;        /* Pointer to the object this task is blocked on */
+    uint8_t             blocked_reason;     /* Which primitive type (os_blocked_reason_t) */
+    uint8_t             timed_out;          /* Set to 1 by tick handler if timeout expired */
+
+    /* Event group wait state */
+    uint32_t            event_wait_bits;    /* Bits this task is waiting for */
+    uint32_t            event_wait_options; /* WAIT_ANY / WAIT_ALL / CLEAR_ON_EXIT */
+    uint32_t            event_return_bits;  /* Bits value when task was unblocked */
 } os_tcb_t;
 
 /* ========== Task API ========== */

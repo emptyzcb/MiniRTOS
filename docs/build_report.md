@@ -7,6 +7,7 @@ MiniOS 是一个面向 ARM Cortex-M3 (STM32F103) 的轻量级嵌入式实时操�
 - **目标平台**: STM32F103C8T6 (Cortex-M3, 72MHz, 64KB Flash, 20KB RAM)
 - **语言**: C11 + ARM Assembly
 - **构建工具**: arm-none-eabi-gcc + Make
+- **版本**: v0.2.0 (新增同步原语、IPC、软件定时器、事件组)
 
 ---
 
@@ -15,31 +16,32 @@ MiniOS 是一个面向 ARM Cortex-M3 (STM32F103) 的轻量级嵌入式实时操�
 ```
 D:\A_stm32_project\
 ├── config\
-│   └── os_config.h           # 内核配置宏 (任务数、堆大小、tick频率等)
+│   └── os_config.h           # 内核配置宏 (任务数、堆大小、tick频率、功能开关)
 ├── common\
-│   └── os_types.h            # 通用类型定义 (状态码、任务句柄等)
+│   └── os_types.h            # 通用类型定义 (状态码、任务句柄、阻塞原因枚举)
 ├── include\
 │   └── os.h                  # 对外统一头文件 (应用层只需包含此文件)
 ├── kernel\
-│   ├── heap4.h               # Heap-4 内存管理头文件
-│   ├── heap4.c               # Heap-4 实现 (首次适配+合并空闲块)
-│   ├── task.h                # 任务管理头文件
-│   ├── task.c                # 任务管理实现 (TCB、就绪链表、tick处理)
-│   ├── scheduler.h           # 调度器头文件
-│   ├── scheduler.c           # 调度器实现 (优先级抢占+时间片轮转)
-│   ├── kernel.h              # 内核核心头文件
-│   └── kernel.c              # 内核初始化、系统tick管理
+│   ├── heap4.h / heap4.c     # Heap-4 内存管理 (首次适配+合并空闲块)
+│   ├── task.h / task.c       # 任务管理 (TCB、就绪链表、tick处理)
+│   ├── scheduler.h / .c      # 调度器 (优先级抢占+时间片轮转)
+│   ├── kernel.h / kernel.c   # 内核初始化、系统tick管理
+│   ├── queue.h / queue.c     # 消息队列 (环形缓冲区+阻塞收发)
+│   ├── semaphore.h / .c      # 信号量 (二值/计数)
+│   ├── mutex.h / mutex.c     # 互斥锁 (优先级继承)
+│   ├── timer.h / timer.c     # 软件定时器 (单次/自动重载)
+│   └── eventgroup.h / .c     # 事件标志组 (等待任意/全部位)
 ├── port\
-│   ├── port.h                # 硬件抽象层头文件
-│   ├── port.c                # Cortex-M3 移植层 (PendSV上下文切换、SysTick)
+│   ├── port.h / port.c       # Cortex-M3 移植层 (PendSV上下文切换、SysTick)
 │   ├── startup_stm32f103.s   # 启动文件 (向量表、.data/.bss初始化)
 │   └── stm32f103.ld          # 链接脚本 (Flash/RAM布局)
 ├── app\
-│   └── main.c                # 应用入口 (演示3个不同优先级的任务)
+│   └── main.c                # 应用入口 (演示所有功能)
 ├── Makefile                  # 构建系统
 ├── .gitignore
 └── docs\
-    └── build_report.md       # 本文档
+    ├── build_report.md       # 本文档
+    └── miniRTOS_technical_design.md  # 技术设计文档
 ```
 
 ---
@@ -177,8 +179,177 @@ os_status_t os_task_delay(ticks);
 
 **启动顺序**:
 1. `os_task_create_idle()` - 创建空闲任务
-2. `os_sched_select_next()` - 选择第一个任务
-3. `os_port_start_first_task()` - 启动第一个任务 (永不返回)
+2. `os_timer_init()` - 初始化定时器子系统 (创建服务任务)
+3. `os_sched_select_next()` - 选择第一个任务
+4. `os_port_start_first_task()` - 启动第一个任务 (永不返回)
+
+**Tick 处理链**:
+1. `os_kernel_tick_increment()` - 递增系统 tick
+2. `os_task_tick()` - 处理任务延时、栈溢出检测、延迟删除
+3. `os_timer_tick()` - 处理软件定时器到期
+4. `os_sched_select_next()` - 选择下一个任务
+
+---
+
+### 6. 消息队列 (`kernel/queue.c`)
+
+**用途**: 任务间通信 (IPC)，支持阻塞发送/接收和 ISR 安全变体。
+
+**数据结构**: 环形缓冲区 + 优先级排序的阻塞等待链表。
+
+```c
+typedef struct os_queue {
+    uint8_t     *buffer;        // 环形缓冲区 (堆分配)
+    uint32_t    item_size;      // 每个元素大小
+    uint32_t    max_items;      // 最大元素数
+    uint32_t    count;          // 当前元素数
+    uint32_t    head, tail;     // 读/写索引
+    os_tcb_t    *send_wait_list;  // 发送等待链表
+    os_tcb_t    *recv_wait_list;  // 接收等待链表
+} os_queue_t;
+```
+
+**API**:
+```c
+os_queue_create(queue, item_size, max_items);
+os_queue_delete(queue);
+os_queue_send(queue, item, timeout);         // 阻塞发送
+os_queue_send_from_isr(queue, item);         // ISR 安全发送
+os_queue_receive(queue, item, timeout);      // 阻塞接收
+os_queue_receive_from_isr(queue, item);      // ISR 安全接收
+os_queue_peek(queue, item);                  // 非阻塞查看
+os_queue_get_count/get_spaces/is_empty/is_full(queue);
+```
+
+**阻塞行为**: 队列满时发送阻塞，队列空时接收阻塞。支持 `OS_WAIT_FOREVER`、`OS_WAIT_NONE` 或指定超时 tick 数。
+
+---
+
+### 7. 信号量 (`kernel/semaphore.c`)
+
+**用途**: 任务同步和资源计数。
+
+**类型**:
+- **二值信号量**: max_count = 1，用于任务间同步/通知
+- **计数信号量**: max_count > 1，用于资源计数
+
+```c
+typedef struct os_sem {
+    uint32_t    count;          // 当前计数
+    uint32_t    max_count;      // 最大计数
+    os_tcb_t    *wait_list;     // 等待链表
+} os_sem_t;
+```
+
+**API**:
+```c
+os_sem_create_binary(sem);
+os_sem_create_counting(sem, max_count, initial_count);
+os_sem_delete(sem);
+os_sem_take(sem, timeout);          // 获取 (P 操作)
+os_sem_give(sem);                   // 释放 (V 操作)
+os_sem_give_from_isr(sem);          // ISR 安全释放
+```
+
+**关键行为**: `os_sem_give()` 使用直接传递模式 - 如果有等待者，直接唤醒任务而不增加计数。
+
+---
+
+### 8. 互斥锁 (`kernel/mutex.c`)
+
+**用途**: 保护共享资源，防止优先级反转。
+
+**特性**:
+- **优先级继承**: 高优先级任务等待时，临时提升持有者优先级
+- **递归锁定**: 同一任务可多次加锁，需对应次数解锁
+
+```c
+typedef struct os_mutex {
+    os_tcb_t    *owner;         // 持有者 (NULL 表示空闲)
+    uint32_t    lock_count;     // 锁定深度
+    os_prio_t   original_prio;  // 持有者原始优先级
+    os_tcb_t    *wait_list;     // 等待链表
+} os_mutex_t;
+```
+
+**API**:
+```c
+os_mutex_create(mutex);
+os_mutex_delete(mutex);
+os_mutex_lock(mutex, timeout);      // 加锁 (支持超时)
+os_mutex_unlock(mutex);             // 解锁
+os_mutex_get_owner(mutex);          // 查询持有者
+```
+
+**优先级继承流程**:
+1. 任务 A (低优先级) 持有 mutex
+2. 任务 B (高优先级) 尝试加锁 -> 阻塞
+3. 自动提升 A 的优先级到 B 的级别
+4. A 执行完毕解锁 -> 恢复原始优先级
+5. B 获得 mutex
+
+---
+
+### 9. 软件定时器 (`kernel/timer.c`)
+
+**用途**: 基于系统 tick 的回调定时器。
+
+**类型**:
+- **单次定时器 (ONE_SHOT)**: 到期后自动停止
+- **自动重载定时器 (AUTO_RELOAD)**: 到期后自动重新开始
+
+```c
+typedef struct os_timer {
+    os_timer_callback_t callback;   // 回调函数
+    os_tick_t           period;     // 周期 (tick)
+    os_tick_t           remaining;  // 剩余 tick
+    os_timer_type_t     type;       // 类型
+    bool                active;     // 是否激活
+    struct os_timer     *next;      // 链表指针
+} os_timer_t;
+```
+
+**架构**: 使用专用定时器服务任务 (优先级高于空闲任务)。`os_timer_tick()` 在 SysTick 中断中递减定时器，到期时通过信号量唤醒服务任务执行回调。
+
+**API**:
+```c
+os_timer_create(timer, name, period, type, callback);
+os_timer_delete(timer, timeout);
+os_timer_start(timer, timeout);
+os_timer_stop(timer, timeout);
+os_timer_reset(timer, timeout);
+os_timer_change_period(timer, new_period, timeout);
+os_timer_is_active(timer);
+```
+
+---
+
+### 10. 事件标志组 (`kernel/eventgroup.c`)
+
+**用途**: 多条件同步，支持等待任意/全部事件位。
+
+```c
+typedef struct os_eventgroup {
+    uint32_t    bits;           // 当前事件位 (32 位)
+    os_tcb_t    *wait_list;     // 等待链表
+} os_eventgroup_t;
+```
+
+**等待选项**:
+- `OS_EVENT_WAIT_ANY` - 任意位满足即唤醒
+- `OS_EVENT_WAIT_ALL` - 所有位满足才唤醒
+- `OS_EVENT_CLEAR_ON_EXIT` - 唤醒时清除匹配位
+
+**API**:
+```c
+os_eventgroup_create(eg);
+os_eventgroup_delete(eg);
+os_eventgroup_set_bits(eg, bits);           // 设置事件位
+os_eventgroup_set_bits_from_isr(eg, bits);  // ISR 安全设置
+os_eventgroup_clear_bits(eg, bits);         // 清除事件位
+os_eventgroup_wait_bits(eg, bits, options, timeout);  // 等待事件位
+os_eventgroup_get_bits(eg);                 // 查询当前位
+```
 
 ---
 
@@ -296,30 +467,35 @@ make flash
 | 源文件 | 说明 | 依赖 |
 |--------|------|------|
 | `kernel/heap4.c` | Heap-4 内存管理 | os_config.h, os_types.h |
-| `kernel/task.c` | 任务管理 | heap4.h, scheduler.h, port.h |
+| `kernel/task.c` | 任务管理 | heap4.h, scheduler.h, kernel.h, port.h |
 | `kernel/scheduler.c` | 调度器 | task.h, kernel.h, port.h |
-| `kernel/kernel.c` | 内核核心 | heap4.h, task.h, scheduler.h, port.h |
+| `kernel/kernel.c` | 内核核心 | heap4.h, task.h, scheduler.h, timer.h |
+| `kernel/queue.c` | 消息队列 | task.h, scheduler.h, heap4.h, port.h |
+| `kernel/semaphore.c` | 信号量 | task.h, scheduler.h, port.h |
+| `kernel/mutex.c` | 互斥锁 | task.h, scheduler.h, port.h |
+| `kernel/timer.c` | 软件定时器 | timer.h, semaphore.h, task.h, heap4.h |
+| `kernel/eventgroup.c` | 事件标志组 | task.h, scheduler.h, port.h |
 | `port/port.c` | Cortex-M3 移植层 | task.h, os_config.h |
 | `app/main.c` | 应用入口 | os.h |
 | `port/startup_stm32f103.s` | 启动汇编 | stm32f103.ld |
 
-### 内存占用预估
+### 内存占用 (v0.2.0 实测)
 
 | 区域 | 大小 | 说明 |
 |------|------|------|
-| 代码 (.text) | ~2-3 KB | 内核 + 应用代码 |
-| 常量 (.rodata) | ~100 B | 版本字符串等 |
-| 数据 (.data) | ~50 B | 已初始化全局变量 |
-| BSS (.bss) | ~16.5 KB | 堆池 (16KB) + 其他 |
-| 栈 | ~1.5 KB | 3个任务栈 (512B x 3) |
-| **总计** | **~20 KB** | RAM 使用接近上限 |
+| 代码 (.text) | ~5.5 KB | 内核 + 同步原语 + 应用代码 |
+| 常量 (.rodata) | ~200 B | 版本字符串等 |
+| BSS (.bss) | ~18.1 KB | 堆池 (14KB) + 任务栈 + 定时器栈 |
+| **总计 Flash** | **~5.7 KB** | 64KB 的 8.9% |
+| **总计 RAM** | **~18.5 KB** | 20KB 的 92.5% |
 
 ### 资源预算
 
-- **Flash**: 64KB, 预计使用 ~3KB (4.7%)
-- **RAM**: 20KB, 预计使用 ~18KB (90%) - 主要是堆池和任务栈
+- **Flash**: 64KB, 实际使用 ~5.7KB (8.9%)
+- **RAM**: 20KB, 实际使用 ~18.5KB (92.5%) - 主要是堆池和任务栈
 - **最大任务数**: 16
-- **堆大小**: 16KB (可配置)
+- **堆大小**: 14KB (可配置)
+- **定时器服务栈**: 256B
 
 ---
 
@@ -328,25 +504,36 @@ make flash
 编辑 `config/os_config.h` 修改系统参数:
 
 ```c
+/* 内核配置 */
 #define OS_CONFIG_MAX_TASKS          16     // 最大任务数
 #define OS_CONFIG_TICK_RATE_HZ       1000   // 系统节拍 (1ms)
 #define OS_CONFIG_DEFAULT_STACK_SIZE  512   // 默认栈大小
-#define OS_CONFIG_HEAP_SIZE           (16*1024)  // 堆大小
+#define OS_CONFIG_HEAP_SIZE           (14*1024)  // 堆大小
 #define OS_CONFIG_NUM_PRIORITIES      8     // 优先级数
 #define OS_CONFIG_USE_TIME_SLICING    1     // 启用时间片轮转
 #define OS_CONFIG_TIME_SLICE_TICKS    5     // 时间片长度 (5ms)
+
+/* 功能开关 (可单独禁用以节省 Flash/RAM) */
+#define OS_CONFIG_USE_QUEUE             1   // 消息队列
+#define OS_CONFIG_USE_SEMAPHORE         1   // 信号量
+#define OS_CONFIG_USE_MUTEX             1   // 互斥锁
+#define OS_CONFIG_USE_SOFTWARE_TIMERS   1   // 软件定时器
+#define OS_CONFIG_USE_EVENTGROUP        1   // 事件标志组
+#define OS_CONFIG_TIMER_SERVICE_STACK   256 // 定时器服务栈大小
 ```
 
 ---
 
 ## 后续扩展方向
 
-1. **同步原语**: 互斥锁 (Mutex)、信号量 (Semaphore)、事件标志组
-2. **IPC**: 消息队列 (Queue)、邮箱 (Mailbox)
-3. **软件定时器**: 基于 tick 的回调定时器
-4. **中断管理**: 优先级分组、中断嵌套
-5. **内存池**: 固定大小块分配器 (pool allocator)
-6. **调试工具**: 任务状态查看、栈溢出检测、运行时统计
+1. ~~**同步原语**: 互斥锁 (Mutex)、信号量 (Semaphore)、事件标志组~~ ✅ 已实现
+2. ~~**IPC**: 消息队列 (Queue)~~ ✅ 已实现
+3. ~~**软件定时器**: 基于 tick 的回调定时器~~ ✅ 已实现
+4. **邮箱 (Mailbox)**: 基于队列的单元素消息传递
+5. **中断管理**: 优先级分组、中断嵌套
+6. **内存池**: 固定大小块分配器 (pool allocator)
+7. **调试工具**: 任务状态查看、运行时统计、Trace 支持
+8. **低功耗**: Tickless Idle 模式
 7. **低功耗**: Tickless Idle 模式
 8. **移植**: 扩展到 Cortex-M0/M4/M7
 
