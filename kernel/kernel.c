@@ -16,7 +16,11 @@
 #include "timer.h"
 #endif
 
-#define OS_VERSION "MiniOS v0.2.0"
+#if OS_CONFIG_USE_TRACE
+#include "trace.h"
+#endif
+
+#define OS_VERSION "MiniOS v0.3.0"
 
 /* ========== Internal Data ========== */
 
@@ -43,6 +47,11 @@ void os_kernel_init(void)
 #if OS_CONFIG_USE_SOFTWARE_TIMERS
     /* Initialize timer subsystem */
     os_timer_init();
+#endif
+
+#if OS_CONFIG_USE_TRACE
+    /* Initialize trace system */
+    os_trace_init();
 #endif
 
     kernel_initialized = true;

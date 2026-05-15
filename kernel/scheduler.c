@@ -17,6 +17,11 @@ static bool scheduler_running = false;
 static uint32_t critical_nesting = 0;
 static volatile uint32_t yield_pending = 0;
 
+#if OS_CONFIG_USE_STATS
+static os_tick_t last_switch_tick = 0;
+extern os_tick_t os_kernel_get_tick(void);
+#endif
+
 /* Forward declarations */
 extern os_tcb_t* os_task_find_highest_ready(void);
 
@@ -103,6 +108,17 @@ void os_sched_select_next(void)
         return; /* No switch needed */
 #endif
     }
+
+#if OS_CONFIG_USE_STATS
+    /* Accumulate run time for the outgoing task */
+    {
+        os_tick_t now = os_kernel_get_tick();
+        if (current != NULL && current->state == OS_TASK_RUNNING) {
+            current->run_time_ticks += (now - last_switch_tick);
+        }
+        last_switch_tick = now;
+    }
+#endif
 
     /* Update current task pointer */
     if (current != NULL) {

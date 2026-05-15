@@ -35,6 +35,20 @@
 #include "eventgroup.h"
 #endif
 
+#if OS_CONFIG_USE_TASK_NOTIFY
+#include "notify.h"
+#endif
+
+#if OS_CONFIG_USE_STATS
+#include "stats.h"
+#endif
+
+#include "sysinfo.h"
+
+#if OS_CONFIG_USE_TRACE
+#include "trace.h"
+#endif
+
 /* ========== Convenience Macros ========== */
 
 /* Delay the current task */

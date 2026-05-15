@@ -172,6 +172,40 @@ void os_port_debug_print(const char *str)
     (void)str;
 }
 
+/* ========== Newlib Syscall Stubs ========== */
+
+void _exit(int status)
+{
+    (void)status;
+    while (1) { __asm volatile("bkpt #0"); }
+}
+
+int _kill(int pid, int sig)
+{
+    (void)pid;
+    (void)sig;
+    return -1;
+}
+
+int _getpid(void)
+{
+    return 1;
+}
+
+static char *heap_end = 0;
+char* _sbrk(int incr)
+{
+    extern char _ebss;
+    char *prev_heap_end;
+
+    if (heap_end == 0) {
+        heap_end = &_ebss;
+    }
+    prev_heap_end = heap_end;
+    heap_end += incr;
+    return prev_heap_end;
+}
+
 /* ========== Context Switch (Assembly) ========== */
 
 /*

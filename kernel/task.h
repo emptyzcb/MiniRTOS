@@ -4,6 +4,9 @@
 #include "os_types.h"
 #include "os_config.h"
 
+/* Idle hook function type */
+typedef void (*os_idle_hook_t)(void);
+
 /* Stack overflow canary value (easy to spot in debugger) */
 #define OS_STACK_CANARY_VALUE       0xCCCCCCCCU
 
@@ -39,6 +42,17 @@ typedef struct os_tcb {
     uint32_t            event_wait_bits;    /* Bits this task is waiting for */
     uint32_t            event_wait_options; /* WAIT_ANY / WAIT_ALL / CLEAR_ON_EXIT */
     uint32_t            event_return_bits;  /* Bits value when task was unblocked */
+
+#if OS_CONFIG_USE_TASK_NOTIFY
+    /* Task notification */
+    volatile uint32_t   notify_value;       /* Notification value */
+    volatile uint8_t    notify_pending;     /* 1 if notification pending */
+#endif
+
+#if OS_CONFIG_USE_STATS
+    /* CPU usage statistics */
+    os_tick_t           run_time_ticks;     /* Total ticks spent running */
+#endif
 } os_tcb_t;
 
 /* ========== Task API ========== */
@@ -91,7 +105,15 @@ uint32_t os_task_get_count(void);
 /* Deferred delete processing (called from os_task_tick) */
 void os_task_process_deferred_delete(void);
 
+/* Blocked list management (used by notify and other primitives) */
+void os_task_add_to_blocked(os_tcb_t *tcb, os_tick_t timeout);
+void os_task_remove_from_blocked(os_tcb_t *tcb);
+
 /* Stack overflow check (called from os_task_tick) */
 void os_task_check_stack_overflow(void);
+
+/* Idle hook management */
+os_status_t os_task_register_idle_hook(os_idle_hook_t hook);
+os_status_t os_task_unregister_idle_hook(os_idle_hook_t hook);
 
 #endif /* OS_TASK_H */

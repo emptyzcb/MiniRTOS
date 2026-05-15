@@ -30,7 +30,7 @@
 /* ========== Heap-4 Configuration ========== */
 
 /* Total heap size in bytes */
-#define OS_CONFIG_HEAP_SIZE             (14 * 1024)
+#define OS_CONFIG_HEAP_SIZE             (10 * 1024)
 
 /* Minimum block size for heap alignment */
 #define OS_CONFIG_HEAP_ALIGNMENT        8
@@ -52,6 +52,23 @@
 
 /* Event Group */
 #define OS_CONFIG_USE_EVENTGROUP        1
+
+/* ========== Task Notification ========== */
+
+#define OS_CONFIG_USE_TASK_NOTIFY       1
+
+/* ========== CPU Usage Statistics ========== */
+
+#define OS_CONFIG_USE_STATS             1
+
+/* ========== Idle Hooks ========== */
+
+#define OS_CONFIG_MAX_IDLE_HOOKS        4
+
+/* ========== Trace Logging ========== */
+
+#define OS_CONFIG_USE_TRACE             1
+#define OS_CONFIG_TRACE_DEPTH           32
 
 /* ========== Debug & Assert ========== */
 

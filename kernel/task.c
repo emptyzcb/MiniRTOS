@@ -24,6 +24,9 @@ typedef struct {
 
 static os_ready_list_t ready_list[OS_CONFIG_NUM_PRIORITIES];
 
+/* Bitmap: bit N set = ready_list[N] is non-empty. Enables O(1) priority lookup. */
+static uint32_t ready_bitmap = 0;
+
 /* Blocked list (tasks waiting on delay) */
 static os_tcb_t *blocked_list = NULL;
 
@@ -33,6 +36,10 @@ static os_tcb_t *deferred_delete_list = NULL;
 /* Task table for quick lookup */
 static os_tcb_t *task_table[OS_CONFIG_MAX_TASKS];
 static uint32_t task_count = 0;
+
+/* Idle hooks */
+static os_idle_hook_t idle_hooks[OS_CONFIG_MAX_IDLE_HOOKS];
+static uint32_t idle_hook_count = 0;
 
 /* Currently running task - defined in port.c for assembly access */
 extern os_tcb_t *current_task_ptr;
@@ -91,7 +98,15 @@ static void idle_task_func(void *param)
 {
     (void)param;
     while (1) {
-        __asm volatile("wfi");
+        if (idle_hook_count > 0) {
+            for (uint32_t i = 0; i < idle_hook_count; i++) {
+                if (idle_hooks[i] != NULL) {
+                    idle_hooks[i]();
+                }
+            }
+        } else {
+            __asm volatile("wfi");
+        }
     }
 }
 
@@ -111,10 +126,15 @@ void os_task_init_ready_list(void)
         ready_list[i].tail = NULL;
         ready_list[i].count = 0;
     }
+    ready_bitmap = 0;
     blocked_list = NULL;
     deferred_delete_list = NULL;
     task_count = 0;
     current_task_ptr = NULL;
+    idle_hook_count = 0;
+    for (int i = 0; i < OS_CONFIG_MAX_IDLE_HOOKS; i++) {
+        idle_hooks[i] = NULL;
+    }
 }
 
 void os_task_add_to_ready(os_tcb_t *tcb)
@@ -130,6 +150,8 @@ void os_task_add_to_ready(os_tcb_t *tcb)
         ready_list[prio].tail->next = tcb;
     } else {
         ready_list[prio].head = tcb;
+        /* First task at this priority: set bitmap bit */
+        ready_bitmap |= (1UL << prio);
     }
     ready_list[prio].tail = tcb;
     ready_list[prio].count++;
@@ -157,17 +179,26 @@ void os_task_remove_from_ready(os_tcb_t *tcb)
     if (ready_list[prio].count > 0) {
         ready_list[prio].count--;
     }
+
+    /* Clear bitmap bit if list is now empty */
+    if (ready_list[prio].head == NULL) {
+        ready_bitmap &= ~(1UL << prio);
+    }
 }
 
 os_tcb_t* os_task_find_highest_ready(void)
 {
-    /* Scan from highest priority (0) to lowest */
-    for (int i = 0; i < OS_CONFIG_NUM_PRIORITIES; i++) {
-        if (ready_list[i].head != NULL) {
-            return ready_list[i].head;
-        }
-    }
-    return NULL; /* Should never happen if idle task exists */
+    if (ready_bitmap == 0) return NULL;
+
+    /*
+     * __builtin_clz counts leading zeros. For 8 priorities in bits [7:0],
+     * the highest priority (0) is bit 7 when viewed as MSB-first.
+     * But our bitmap uses bit 0 = highest priority, so we use __builtin_ctz
+     * to find the lowest set bit = highest priority.
+     */
+    uint32_t prio = __builtin_ctz(ready_bitmap);
+    OS_ASSERT(prio < OS_CONFIG_NUM_PRIORITIES);
+    return ready_list[prio].head;
 }
 
 /* ========== Public Task API ========== */
@@ -234,6 +265,15 @@ os_status_t os_task_create(os_task_func_t func,
     tcb->event_wait_bits = 0;
     tcb->event_wait_options = 0;
     tcb->event_return_bits = 0;
+
+#if OS_CONFIG_USE_TASK_NOTIFY
+    tcb->notify_value = 0;
+    tcb->notify_pending = 0;
+#endif
+
+#if OS_CONFIG_USE_STATS
+    tcb->run_time_ticks = 0;
+#endif
 
     /* Copy name */
     if (name != NULL) {
@@ -381,17 +421,8 @@ os_status_t os_task_delay(os_tick_t ticks)
 
     os_sched_enter_critical();
 
-    /* Remove from ready list */
-    os_task_remove_from_ready(current_task_ptr);
-
-    /* Set delay and move to blocked list */
-    current_task_ptr->delay_ticks = ticks;
-    current_task_ptr->state = OS_TASK_BLOCKED;
-    current_task_ptr->next = blocked_list;
-    if (blocked_list != NULL) {
-        blocked_list->prev = current_task_ptr;
-    }
-    blocked_list = current_task_ptr;
+    /* Add to blocked list with timeout */
+    os_task_add_to_blocked(current_task_ptr, ticks);
 
     os_sched_exit_critical();
 
@@ -428,6 +459,35 @@ const char* os_task_get_name(os_task_handle_t handle)
     os_tcb_t *tcb = (os_tcb_t*)handle;
     if (tcb == NULL) return "?";
     return tcb->name;
+}
+
+/* ========== Blocked List Management ========== */
+
+void os_task_add_to_blocked(os_tcb_t *tcb, os_tick_t timeout)
+{
+    os_task_remove_from_ready(tcb);
+
+    tcb->state = OS_TASK_BLOCKED;
+    tcb->delay_ticks = timeout;
+    tcb->next = blocked_list;
+    if (blocked_list != NULL) {
+        blocked_list->prev = tcb;
+    }
+    blocked_list = tcb;
+}
+
+void os_task_remove_from_blocked(os_tcb_t *tcb)
+{
+    if (tcb->prev != NULL) {
+        tcb->prev->next = tcb->next;
+    } else {
+        blocked_list = tcb->next;
+    }
+    if (tcb->next != NULL) {
+        tcb->next->prev = tcb->prev;
+    }
+    tcb->next = NULL;
+    tcb->prev = NULL;
 }
 
 /* ========== Tick Handler ========== */
@@ -556,4 +616,54 @@ os_prio_t os_task_get_priority(os_task_handle_t handle)
 uint32_t os_task_get_count(void)
 {
     return task_count;
+}
+
+/* ========== Idle Hook Management ========== */
+
+os_status_t os_task_register_idle_hook(os_idle_hook_t hook)
+{
+    if (hook == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+
+    if (idle_hook_count >= OS_CONFIG_MAX_IDLE_HOOKS) {
+        os_sched_exit_critical();
+        return OS_ERR_FULL;
+    }
+
+    /* Check for duplicate */
+    for (uint32_t i = 0; i < idle_hook_count; i++) {
+        if (idle_hooks[i] == hook) {
+            os_sched_exit_critical();
+            return OS_ERR_STATE;
+        }
+    }
+
+    idle_hooks[idle_hook_count++] = hook;
+    os_sched_exit_critical();
+
+    return OS_OK;
+}
+
+os_status_t os_task_unregister_idle_hook(os_idle_hook_t hook)
+{
+    if (hook == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+
+    for (uint32_t i = 0; i < idle_hook_count; i++) {
+        if (idle_hooks[i] == hook) {
+            /* Shift remaining hooks down */
+            for (uint32_t j = i; j < idle_hook_count - 1; j++) {
+                idle_hooks[j] = idle_hooks[j + 1];
+            }
+            idle_hook_count--;
+            idle_hooks[idle_hook_count] = NULL;
+            os_sched_exit_critical();
+            return OS_OK;
+        }
+    }
+
+    os_sched_exit_critical();
+    return OS_ERR_PARAM;
 }

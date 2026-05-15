@@ -1,7 +1,7 @@
 /*
- * main.c - MiniOS Demo Application
+ * main.c - MiniOS Demo Application (v0.3.0)
  *
- * Demonstrates all OS features:
+ * Demonstrates all OS features including v0.3.0 additions:
  *   - Task creation with different priorities
  *   - Task delay and scheduling
  *   - Heap memory allocation
@@ -10,6 +10,11 @@
  *   - Mutex (shared resource protection)
  *   - Software timer (periodic callback)
  *   - Event group (multi-condition synchronization)
+ *   - Task notification (lightweight signaling)
+ *   - CPU usage statistics
+ *   - Idle hook
+ *   - System info query
+ *   - Trace logging
  */
 
 #include "os.h"
@@ -38,6 +43,10 @@ static os_eventgroup_t demo_events;
 #define EVT_DATA_PROCESSED  (1 << 1)
 #define EVT_ALL_DONE        (1 << 2)
 
+/* Task handles for notification demo */
+static os_task_handle_t sensor_task_handle;
+static os_task_handle_t monitor_task_handle;
+
 /* ========== Timer Callback ========== */
 
 static void heartbeat_callback(os_timer_t *timer)
@@ -46,9 +55,19 @@ static void heartbeat_callback(os_timer_t *timer)
     heartbeat_count++;
 }
 
+/* ========== Idle Hook Demo ========== */
+
+static volatile uint32_t idle_tick_count = 0;
+
+static void my_idle_hook(void)
+{
+    idle_tick_count++;
+    __asm volatile("wfi");
+}
+
 /* ========== Task 1: Queue Producer ========== */
 
-static os_stack_t task1_stack[128];
+static os_stack_t task1_stack[64];
 static void producer_task(void *param)
 {
     (void)param;
@@ -61,13 +80,16 @@ static void producer_task(void *param)
         /* Signal data ready */
         os_sem_give(&data_ready_sem);
 
+        /* Notify sensor task via task notification */
+        os_task_notify(sensor_task_handle, value);
+
         OS_DELAY_MS(200);
     }
 }
 
 /* ========== Task 2: Queue Consumer + Mutex ========== */
 
-static os_stack_t task2_stack[128];
+static os_stack_t task2_stack[64];
 static void consumer_task(void *param)
 {
     (void)param;
@@ -86,13 +108,16 @@ static void consumer_task(void *param)
 
             /* Signal sensor data processed */
             os_eventgroup_set_bits(&demo_events, EVT_DATA_PROCESSED);
+
+            /* Trace the event */
+            os_trace_record(OS_TRACE_USER + 1, received, shared_counter);
         }
     }
 }
 
 /* ========== Task 3: Event Group Waiter ========== */
 
-static os_stack_t task3_stack[128];
+static os_stack_t task3_stack[64];
 static void event_waiter_task(void *param)
 {
     (void)param;
@@ -113,28 +138,46 @@ static void event_waiter_task(void *param)
     }
 }
 
-/* ========== Task 4: System Monitor ========== */
+/* ========== Task 4: Sensor (Notification Receiver) ========== */
 
-static os_stack_t task4_stack[128];
+static os_stack_t task4_stack[64];
+static void sensor_task(void *param)
+{
+    (void)param;
+    uint32_t notify_val;
+
+    while (1) {
+        /* Wait for notification from producer */
+        if (os_task_notify_wait(&notify_val, OS_WAIT_FOREVER) == OS_OK) {
+            /* Process the notification value */
+            os_trace_record(OS_TRACE_USER + 2, notify_val, 0);
+        }
+    }
+}
+
+/* ========== Task 5: System Monitor ========== */
+
+static os_stack_t task5_stack[64];
 static void monitor_task(void *param)
 {
     (void)param;
+    os_sysinfo_t sysinfo;
 
     while (1) {
-        /* Monitor system state */
-        uint32_t free_heap = os_heap_get_free_size();
-        uint32_t min_heap  = os_heap_get_min_free_size();
-        uint32_t queue_count = os_queue_get_count(&demo_queue);
-        uint32_t sem_count = os_sem_get_count(&data_ready_sem);
-        uint32_t events = os_eventgroup_get_bits(&demo_events);
+        /* Query system info */
+        os_sysinfo_get(&sysinfo);
 
-        (void)free_heap;
-        (void)min_heap;
-        (void)queue_count;
-        (void)sem_count;
-        (void)events;
+        /* Get CPU usage for each task */
+        uint32_t cpu_sensor = os_stats_get_cpu_usage(sensor_task_handle);
+
+        /* Record monitor snapshot as trace */
+        os_trace_record(OS_TRACE_USER + 3, sysinfo.heap_free, cpu_sensor);
+
+        (void)sysinfo;
+        (void)cpu_sensor;
         (void)heartbeat_count;
         (void)shared_counter;
+        (void)idle_tick_count;
 
         OS_DELAY_SEC(3);
     }
@@ -146,6 +189,9 @@ int main(void)
 {
     /* Initialize the OS kernel */
     os_kernel_init();
+
+    /* Register an idle hook */
+    os_task_register_idle_hook(my_idle_hook);
 
     /* Create synchronization objects */
     os_queue_create(&demo_queue, sizeof(uint32_t), 10);
@@ -168,8 +214,11 @@ int main(void)
     os_task_create(event_waiter_task,"EVT",   NULL, 4,
                    task3_stack, sizeof(task3_stack), NULL);
 
+    os_task_create(sensor_task,      "SENS",  NULL, 3,
+                   task4_stack, sizeof(task4_stack), &sensor_task_handle);
+
     os_task_create(monitor_task,     "MON",   NULL, 6,
-                   task4_stack, sizeof(task4_stack), NULL);
+                   task5_stack, sizeof(task5_stack), &monitor_task_handle);
 
     /* Start the OS (never returns) */
     os_kernel_start();

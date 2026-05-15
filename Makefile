@@ -35,6 +35,10 @@ C_SOURCES =  \
 	kernel/mutex.c \
 	kernel/timer.c \
 	kernel/eventgroup.c \
+	kernel/notify.c \
+	kernel/stats.c \
+	kernel/sysinfo.c \
+	kernel/trace.c \
 	port/port.c \
 	app/main.c
 

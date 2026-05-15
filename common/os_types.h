@@ -52,6 +52,7 @@ typedef enum {
     OS_BLOCKED_ON_SEM_TAKE      = 3,
     OS_BLOCKED_ON_MUTEX_LOCK    = 4,
     OS_BLOCKED_ON_EVENT_WAIT    = 5,
+    OS_BLOCKED_ON_NOTIFY        = 6,
 } os_blocked_reason_t;
 
 /* ========== Constants ========== */
