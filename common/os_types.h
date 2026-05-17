@@ -19,6 +19,7 @@ typedef void*       os_sem_handle_t;
 typedef void*       os_mutex_handle_t;
 typedef void*       os_timer_handle_t;
 typedef void*       os_eventgroup_handle_t;
+typedef void*       os_mempool_handle_t;
 
 /* ========== Return Codes ========== */
 

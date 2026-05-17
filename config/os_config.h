@@ -53,6 +53,9 @@
 /* Event Group */
 #define OS_CONFIG_USE_EVENTGROUP        1
 
+/* Memory Pool */
+#define OS_CONFIG_USE_MEMPOOL           1
+
 /* ========== Task Notification ========== */
 
 #define OS_CONFIG_USE_TASK_NOTIFY       1

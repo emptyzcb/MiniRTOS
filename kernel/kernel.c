@@ -20,7 +20,7 @@
 #include "trace.h"
 #endif
 
-#define OS_VERSION "MiniOS v0.3.0"
+#define OS_VERSION "MiniOS v0.4.0"
 
 /* ========== Internal Data ========== */
 

@@ -7,7 +7,7 @@ MiniOS 是一个面向 ARM Cortex-M3 (STM32F103) 的轻量级嵌入式实时操�
 - **目标平台**: STM32F103C8T6 (Cortex-M3, 72MHz, 64KB Flash, 20KB RAM)
 - **语言**: C11 + ARM Assembly
 - **构建工具**: arm-none-eabi-gcc + Make
-- **版本**: v0.2.0 (新增同步原语、IPC、软件定时器、事件组)
+- **版本**: v0.4.0 (新增同步原语、IPC、软件定时器、事件组、内存池)
 
 ---
 
@@ -30,7 +30,8 @@ D:\A_stm32_project\
 │   ├── semaphore.h / .c      # 信号量 (二值/计数)
 │   ├── mutex.h / mutex.c     # 互斥锁 (优先级继承)
 │   ├── timer.h / timer.c     # 软件定时器 (单次/自动重载)
-│   └── eventgroup.h / .c     # 事件标志组 (等待任意/全部位)
+│   ├── eventgroup.h / .c     # 事件标志组 (等待任意/全部位)
+│   └── mempool.h / mempool.c # 内存池分配器 (固定大小块, O(1) 分配释放)
 ├── port\
 │   ├── port.h / port.c       # Cortex-M3 移植层 (PendSV上下文切换、SysTick)
 │   ├── startup_stm32f103.s   # 启动文件 (向量表、.data/.bss初始化)
@@ -353,6 +354,42 @@ os_eventgroup_get_bits(eg);                 // 查询当前位
 
 ---
 
+### 11. 内存池 (`kernel/mempool.c`)
+
+**用途**: 固定大小块的 O(1) 分配/释放，零碎片。适合高频分配相同大小对象的场景。
+
+**与 Heap-4 的区别**:
+- Heap-4: 任意大小，O(n) 分配，可能碎片化
+- Memory Pool: 固定大小，O(1) 分配，零碎片
+
+**数据结构**:
+```c
+typedef struct os_mempool {
+    uint8_t     *pool_start;        // 池起始地址
+    uint8_t     *pool_end;          // 池结束地址
+    uint32_t    block_size;         // 用户可见的块大小
+    uint32_t    total_blocks;       // 总块数
+    uint32_t    free_count;         // 当前空闲块数
+    uint32_t    min_free_count;     // 空闲块历史最低值
+    void        *free_list;         // 空闲链表头 (LIFO)
+} os_mempool_t;
+```
+
+**核心原理**: 空闲块的前 `sizeof(void*)` 字节存储指向下一个空闲块的指针，无需额外 header。分配取链表头，释放插链表头。
+
+**API**:
+```c
+os_mempool_create(pool, buf, buf_size, block_size);  // 创建池
+os_mempool_alloc(pool);                               // 分配一块 (O(1))
+os_mempool_free(pool, ptr);                           // 释放一块 (O(1))
+os_mempool_get_free_count(pool);                      // 查询空闲块数
+os_mempool_get_min_free_count(pool);                  // 查询高水位
+os_mempool_get_total_count(pool);                     // 查询总块数
+os_mempool_owns(pool, ptr);                           // 检查指针归属
+```
+
+---
+
 ## 搭建过程日志
 
 ### 第一阶段: 项目骨架搭建
@@ -475,6 +512,7 @@ make flash
 | `kernel/mutex.c` | 互斥锁 | task.h, scheduler.h, port.h |
 | `kernel/timer.c` | 软件定时器 | timer.h, semaphore.h, task.h, heap4.h |
 | `kernel/eventgroup.c` | 事件标志组 | task.h, scheduler.h, port.h |
+| `kernel/mempool.c` | 内存池分配器 | mempool.h, os_config.h |
 | `port/port.c` | Cortex-M3 移植层 | task.h, os_config.h |
 | `app/main.c` | 应用入口 | os.h |
 | `port/startup_stm32f103.s` | 启动汇编 | stm32f103.ld |
@@ -531,11 +569,10 @@ make flash
 3. ~~**软件定时器**: 基于 tick 的回调定时器~~ ✅ 已实现
 4. **邮箱 (Mailbox)**: 基于队列的单元素消息传递
 5. **中断管理**: 优先级分组、中断嵌套
-6. **内存池**: 固定大小块分配器 (pool allocator)
+6. ~~**内存池**: 固定大小块分配器 (pool allocator)~~ ✅ 已实现
 7. **调试工具**: 任务状态查看、运行时统计、Trace 支持
 8. **低功耗**: Tickless Idle 模式
-7. **低功耗**: Tickless Idle 模式
-8. **移植**: 扩展到 Cortex-M0/M4/M7
+9. **移植**: 扩展到 Cortex-M0/M4/M7
 
 ---
 

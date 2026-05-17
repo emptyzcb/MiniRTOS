@@ -35,6 +35,10 @@
 #include "eventgroup.h"
 #endif
 
+#if OS_CONFIG_USE_MEMPOOL
+#include "mempool.h"
+#endif
+
 #if OS_CONFIG_USE_TASK_NOTIFY
 #include "notify.h"
 #endif

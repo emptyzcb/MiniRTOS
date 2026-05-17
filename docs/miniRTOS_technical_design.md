@@ -1,6 +1,6 @@
 # MiniRTOS 技术设计文档
 
-**版本**: v0.1.0
+**版本**: v0.4.0
 **目标平台**: ARM Cortex-M3 (STM32F103C8T6)
 **语言**: C11 + ARM Thumb-2 Assembly
 
@@ -24,6 +24,7 @@
 14. [内存布局与资源预算](#14-内存布局与资源预算)
 15. [已知限制与注意事项](#15-已知限制与注意事项)
 16. [后续扩展方向](#16-后续扩展方向)
+17. [内存池分配器 (mempool.c)](#17-内存池分配器-mempoolc)
 
 ---
 
@@ -1554,16 +1555,16 @@ Flash (0x08000000, 64KB):
 | 功能 | 说明 | 状态 |
 |------|------|------|
 | ~~栈溢出检测~~ | ~~在 tick 中检查栈边界~~ | ✅ |
-| 运行时统计 | 每个任务的 CPU 占用率 | 待实现 |
-| 任务状态查看 | 导出所有任务的状态信息 | 待实现 |
-| Trace 支持 | 记录内核事件用于离线分析 | 待实现 |
+| 运行时统计 | 每个任务的 CPU 占用率 | ✅ |
+| 任务状态查看 | 导出所有任务的状态信息 | ✅ |
+| Trace 支持 | 记录内核事件用于离线分析 | ✅ |
 
 ### 第四优先级：高级特性
 
 | 功能 | 说明 | 状态 |
 |------|------|------|
 | Tickless Idle | 空闲时停止 SysTick，进一步降低功耗 | 待实现 |
-| 内存池 | 固定大小块分配器，O(1) 分配无碎片 | 待实现 |
+| 内存池 | 固定大小块分配器，O(1) 分配无碎片 | ✅ |
 | 邮箱 (Mailbox) | 基于队列的单元素消息传递 | 待实现 |
 | 移植到 Cortex-M0/M4/M7 | 扩展硬件支持 | 待实现 |
 
@@ -1761,7 +1762,174 @@ uint32_t event_return_bits;   // 唤醒时的 bits 值
 
 ---
 
-## 22. TCB 扩展 — v0.2.0 新增
+## 22. 内存池分配器 (mempool.c) — v0.3.0 新增
+
+### 22.1 设计目标
+
+Heap-4 采用首次适配算法，适合变长分配，但在高频分配/释放相同大小对象的场景下存在两个问题：
+
+1. **碎片化**: 反复 alloc/free 不同生命周期的同大小块会产生外部碎片
+2. **性能**: O(n) 遍历空闲链表寻找合适块，不适合时间敏感路径
+
+内存池 (Memory Pool) 解决这两个问题：将一块连续内存划分为等大的块，用空闲链表串联。分配和释放均为 O(1)，且零碎片。
+
+### 22.2 适用场景
+
+| 场景 | 说明 |
+|------|------|
+| TCB 分配 | 任务创建/删除频繁时，用固定大小的 TCB 池替代 heap_alloc |
+| 网络数据包 | 网络栈中固定大小的 packet buffer |
+| IPC 消息 | 固定大小的消息结构体频繁收发 |
+| 中断上下文分配 | 需要从 ISR 中快速获取内存时 |
+
+### 22.3 内存布局
+
+```
+用户提供的缓冲区:
++-----------------------------------------------------------+
+| Block 0 | Block 1 | Block 2 | ... | Block N-1            |
++-----------------------------------------------------------+
+
+每个 Block 的布局:
+  已分配时: [用户数据 (block_size 字节)]
+  空闲时:   [next 指针 | 填充...]  (前 sizeof(void*) 字节存放链表指针)
+```
+
+**关键设计**: 空闲链表的指针直接嵌入在块的数据区中（无需额外 header），已分配的块对用户完全透明，无任何元数据开销。这是内存池高效的根本原因。
+
+### 22.4 空闲链表结构
+
+空闲块构成一个单向链表 (栈式 LIFO)：
+
+```
+free_list --> [Block 3] --> [Block 7] --> [Block 1] --> NULL
+               (head)                                (tail)
+```
+
+- **分配**: 取出链表头 (`pop head`)，O(1)
+- **释放**: 插入链表头 (`push head`)，O(1)
+
+### 22.5 数据结构
+
+```c
+typedef struct os_mempool {
+    uint8_t     *pool_start;        // 池起始地址
+    uint8_t     *pool_end;          // 池结束地址 (不含)
+    uint32_t    block_size;         // 用户可见的块大小
+    uint32_t    total_blocks;       // 总块数
+    uint32_t    free_count;         // 当前空闲块数
+    uint32_t    min_free_count;     // 空闲块历史最低值 (高水位标记)
+    void        *free_list;         // 空闲链表头
+} os_mempool_t;
+```
+
+### 22.6 创建流程
+
+`os_mempool_create()` 的工作：
+
+1. 对齐缓冲区起始地址到指针边界
+2. 计算实际块步长 = `ALIGN_UP(block_size)`，确保每块至少容纳一个指针
+3. 计算可容纳的块数 = `可用空间 / 步长`
+4. 遍历所有块，将每个块的前 `sizeof(void*)` 字节指向下一个块，构建空闲链表
+5. 最后一个块的 next 指向 NULL
+
+### 22.7 分配流程
+
+```
+os_mempool_alloc(pool):
+    if pool->free_count == 0:
+        return NULL                        // 池已耗尽
+
+    block = pool->free_list                // 取出链表头
+    pool->free_list = *(void**)block       // 头指针后移
+    pool->free_count--
+
+    return block                           // 返回给用户
+```
+
+### 22.8 释放流程
+
+```
+os_mempool_free(pool, ptr):
+    // 边界检查: ptr 必须在 [pool_start, pool_end) 范围内
+    // 对齐检查: ptr 必须在块的边界上
+
+    *(void**)ptr = pool->free_list         // 新块指向原链表头
+    pool->free_list = ptr                  // 新块成为链表头
+    pool->free_count++
+```
+
+### 22.9 与 Heap-4 的对比
+
+| 特性 | Heap-4 | Memory Pool |
+|------|--------|-------------|
+| 分配大小 | 任意 | 固定 |
+| 分配复杂度 | O(n) | O(1) |
+| 释放复杂度 | O(1) (摊销) | O(1) |
+| 碎片化 | 可能产生外部碎片 | 零碎片 |
+| 元数据开销 | 每块 12 字节 header | 0 (空闲时复用数据区) |
+| 适用场景 | 通用动态分配 | 固定大小对象高频分配 |
+
+### 22.10 API 参考
+
+```c
+/* 创建内存池 */
+os_status_t os_mempool_create(os_mempool_t *pool, void *buf,
+                              uint32_t buf_size, uint32_t block_size);
+
+/* 分配一个块 (O(1)) */
+void* os_mempool_alloc(os_mempool_t *pool);
+
+/* 释放一个块 (O(1)) */
+os_status_t os_mempool_free(os_mempool_t *pool, void *ptr);
+
+/* 查询 API */
+uint32_t os_mempool_get_free_count(os_mempool_t *pool);
+uint32_t os_mempool_get_min_free_count(os_mempool_t *pool);
+uint32_t os_mempool_get_total_count(os_mempool_t *pool);
+bool os_mempool_owns(os_mempool_t *pool, void *ptr);
+```
+
+### 22.11 使用示例
+
+```c
+/* 定义一个 16 块、每块 32 字节的内存池 */
+#define BLOCK_SIZE   32
+#define BLOCK_COUNT  16
+
+static os_mempool_t my_pool;
+static uint8_t pool_buf[BLOCK_SIZE * BLOCK_COUNT];
+
+void pool_demo(void)
+{
+    os_mempool_create(&my_pool, pool_buf, sizeof(pool_buf), BLOCK_SIZE);
+
+    /* 分配 */
+    void *p1 = os_mempool_alloc(&my_pool);  // 获取一个块
+    void *p2 = os_mempool_alloc(&my_pool);  // 获取另一个块
+
+    /* 使用 ... */
+
+    /* 释放 */
+    os_mempool_free(&my_pool, p1);
+    os_mempool_free(&my_pool, p2);
+
+    /* 查询 */
+    uint32_t free = os_mempool_get_free_count(&my_pool);  // 16
+    uint32_t min  = os_mempool_get_min_free_count(&my_pool); // 14
+}
+```
+
+### 22.12 配置宏
+
+```c
+/* config/os_config.h */
+#define OS_CONFIG_USE_MEMPOOL   1   // 启用内存池模块 (设为 0 可裁剪)
+```
+
+---
+
+## 23. TCB 扩展 — v0.2.0 新增
 
 ### 22.1 新增字段
 
