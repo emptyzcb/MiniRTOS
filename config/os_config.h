@@ -35,6 +35,29 @@
 /* Minimum block size for heap alignment */
 #define OS_CONFIG_HEAP_ALIGNMENT        8
 
+/* ========== NVIC Priority Configuration ========== */
+
+/* Number of priority bits implemented in the MCU (STM32F1: 4 bits) */
+#define OS_CONFIG_NVIC_PRIO_BITS        4
+
+/*
+ * NVIC priority group value (PRIGROUP field in AIRCR).
+ * Controls the split between preemption priority and sub-priority.
+ *
+ * Group 7: 0 bits preempt / 4 bits sub  (no preemption)
+ * Group 6: 1 bit  preempt / 3 bits sub
+ * Group 5: 2 bits preempt / 2 bits sub
+ * Group 4: 3 bits preempt / 1 bit  sub
+ * Group 3: 4 bits preempt / 0 bits sub  (full preemption, default)
+ */
+#define OS_CONFIG_NVIC_PRIGROUP         3
+
+/* PendSV interrupt priority (0xF = lowest, must be lowest for context switch) */
+#define OS_CONFIG_PENDSV_PRIORITY       0xF
+
+/* SysTick interrupt priority */
+#define OS_CONFIG_SYSTICK_PRIORITY      0xF
+
 /* ========== Synchronization Primitives ========== */
 
 /* Queue */

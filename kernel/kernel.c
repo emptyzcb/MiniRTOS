@@ -35,6 +35,9 @@ void os_kernel_init(void)
         return;
     }
 
+    /* Initialize NVIC priority group and system handler priorities */
+    os_port_nvic_set_priority_init();
+
     /* Initialize heap */
     os_heap_init();
 

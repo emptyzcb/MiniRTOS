@@ -48,9 +48,17 @@ typedef struct {
 } systick_t;
 
 typedef struct {
-    volatile uint32_t ISER[8];
+    volatile uint32_t ISER[8];          /* 0x000: Interrupt Set Enable */
     uint32_t RESERVED0[24];
-    volatile uint32_t ICER[8];
+    volatile uint32_t ICER[8];          /* 0x080: Interrupt Clear Enable */
+    uint32_t RESERVED1[24];
+    volatile uint32_t ISPR[8];          /* 0x100: Interrupt Set Pending */
+    uint32_t RESERVED2[24];
+    volatile uint32_t ICPR[8];          /* 0x180: Interrupt Clear Pending */
+    uint32_t RESERVED3[24];
+    volatile uint32_t IABR[8];          /* 0x200: Interrupt Active Bit */
+    uint32_t RESERVED4[56];
+    volatile uint32_t IP[240];          /* 0x300: Interrupt Priority */
 } nvic_t;
 
 /* ========== Constants ========== */
@@ -63,6 +71,10 @@ typedef struct {
 #define SCB_ICSR_PENDSVSET      (1UL << 28)
 
 #define CORTEX_M3_PRIO_BITS     4   /* STM32F1 uses 4 priority bits */
+
+/* AIRCR register constants */
+#define SCB_AIRCR_VECTKEY       0x05FA0000UL
+#define SCB_AIRCR_PRIGROUP_MASK 0x00000700UL
 
 /* Initial xPSR value (Thumb mode bit set) */
 #define INITIAL_XPSR            0x01000000UL
@@ -154,14 +166,63 @@ void os_port_systick_init(uint32_t freq_hz)
     SYSTICK->CTRL = SYSTICK_CTRL_ENABLE |
                     SYSTICK_CTRL_TICKINT |
                     SYSTICK_CTRL_CLKSOURCE;
+}
 
-    /* Set PendSV to lowest priority (for context switch) */
-    /* SHPR3[23:16] = PendSV priority */
-    SCB_SHPR3 |= (0xFFUL << 16);
+/* ========== NVIC Priority Group Management ========== */
 
-    /* Set SysTick priority just above PendSV */
-    /* SHPR3[31:24] = SysTick priority */
-    SCB_SHPR3 |= (0xFFUL << 24);
+void os_port_nvic_set_priority_group(uint32_t group)
+{
+    uint32_t aircr;
+
+    aircr = SCB->AIRCR;
+    aircr &= ~(SCB_AIRCR_PRIGROUP_MASK | 0xFFFFUL);  /* Clear PRIGROUP and VECTKEY */
+    aircr |= SCB_AIRCR_VECTKEY | (group << 8);        /* Write new value with key */
+    SCB->AIRCR = aircr;
+}
+
+void os_port_nvic_set_priority(int32_t irqn, uint32_t priority)
+{
+    if (irqn >= 0) {
+        /* Peripheral interrupt: set via NVIC IP[] register */
+        NVIC->IP[(uint32_t)irqn] = (uint8_t)((priority << (8 - OS_CONFIG_NVIC_PRIO_BITS)) & 0xFFUL);
+    } else {
+        /*
+         * System exception (irqn < 0): set via SCB SHPR[] registers.
+         * System exceptions use SHPR1-SHPR3 (indices 0-2).
+         * irqn mapping: -1=SHPR[0][7:0], -2=SHPR[0][15:8], ..., -12=SHPR[2][31:24]
+         * Encode: SHPR index = ((irqn & 0xF) - 4) / 4, byte offset = ((irqn & 0xF) - 4) % 4
+         */
+        uint32_t idx = ((uint32_t)(irqn & 0xF) - 4UL) / 4UL;
+        uint32_t shift = (((uint32_t)(irqn & 0xF) - 4UL) % 4UL) * 8UL;
+        SCB->SHPR[idx] &= ~(0xFFUL << shift);
+        SCB->SHPR[idx] |= ((priority << (8 - OS_CONFIG_NVIC_PRIO_BITS)) & 0xFFUL) << shift;
+    }
+}
+
+void os_port_nvic_enable_irq(int32_t irqn)
+{
+    if (irqn >= 0) {
+        NVIC->ISER[(uint32_t)irqn >> 5] = (1UL << ((uint32_t)irqn & 0x1FUL));
+    }
+}
+
+void os_port_nvic_disable_irq(int32_t irqn)
+{
+    if (irqn >= 0) {
+        NVIC->ICER[(uint32_t)irqn >> 5] = (1UL << ((uint32_t)irqn & 0x1FUL));
+    }
+}
+
+void os_port_nvic_set_priority_init(void)
+{
+    /* Configure NVIC priority group */
+    os_port_nvic_set_priority_group(OS_CONFIG_NVIC_PRIGROUP);
+
+    /* Set PendSV to configured priority (should be lowest for context switch) */
+    os_port_nvic_set_priority(-6, OS_CONFIG_PENDSV_PRIORITY);  /* PendSV = exception -6 */
+
+    /* Set SysTick to configured priority */
+    os_port_nvic_set_priority(-1, OS_CONFIG_SYSTICK_PRIORITY); /* SysTick = exception -1 */
 }
 
 /* ========== Debug Output ========== */

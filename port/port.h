@@ -59,6 +59,41 @@ void os_port_yield(void);
  */
 void os_port_systick_init(uint32_t freq_hz);
 
+/* ========== NVIC Priority Group Management ========== */
+
+/*
+ * Configure NVIC priority group (AIRCR.PRIGROUP).
+ * Controls the split between preemption priority and sub-priority.
+ * Common values: 3 = 4-bit preempt / 0-bit sub (full preemption)
+ */
+void os_port_nvic_set_priority_group(uint32_t group);
+
+/*
+ * Set the priority for an interrupt or system exception.
+ * irqn >= 0: peripheral interrupt (0, 1, 2, ...)
+ * irqn < 0:  system exception (-1=SysTick, -4=MemManage, -5=BusFault,
+ *             -6=UsageFault, -11=SVCall, -14=PendSV)
+ * priority: 0 = highest, (1 << OS_CONFIG_NVIC_PRIO_BITS) - 1 = lowest
+ */
+void os_port_nvic_set_priority(int32_t irqn, uint32_t priority);
+
+/*
+ * Enable a peripheral interrupt in NVIC.
+ */
+void os_port_nvic_enable_irq(int32_t irqn);
+
+/*
+ * Disable a peripheral interrupt in NVIC.
+ */
+void os_port_nvic_disable_irq(int32_t irqn);
+
+/*
+ * Initialize NVIC priority configuration.
+ * Called from os_kernel_init(). Sets priority group and
+ * configures PendSV/SysTick priorities.
+ */
+void os_port_nvic_set_priority_init(void);
+
 /* ========== Debug Output ========== */
 
 /*
