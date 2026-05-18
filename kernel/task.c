@@ -13,6 +13,10 @@
 #include "os_config.h"
 #include <string.h>
 
+#if OS_CONFIG_USE_TRACE
+#include "trace.h"
+#endif
+
 /* ========== Internal Data ========== */
 
 /* Ready list: one linked list per priority level */
@@ -297,6 +301,10 @@ os_status_t os_task_create(os_task_func_t func,
         *handle = (os_task_handle_t)tcb;
     }
 
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_TASK_CREATE, (uint32_t)tcb, (uint32_t)priority);
+#endif
+
     return OS_OK;
 }
 
@@ -342,6 +350,10 @@ os_status_t os_task_delete(os_task_handle_t handle)
         tcb->next = deferred_delete_list;
         deferred_delete_list = tcb;
 
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_TASK_DELETE, (uint32_t)tcb, 0);
+#endif
+
         os_sched_exit_critical();
 
         /* Yield to trigger context switch; cleanup happens later */
@@ -364,6 +376,10 @@ os_status_t os_task_delete(os_task_handle_t handle)
 
     tcb->state = OS_TASK_DELETED;
 
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_TASK_DELETE, (uint32_t)tcb, 0);
+#endif
+
     /* Free resources */
     if (tcb->stack_base != idle_task_stack) {
         os_heap_free(tcb->stack_base);
@@ -385,6 +401,9 @@ os_status_t os_task_suspend(os_task_handle_t handle)
     if (tcb->state == OS_TASK_READY || tcb->state == OS_TASK_RUNNING) {
         os_task_remove_from_ready(tcb);
         tcb->state = OS_TASK_SUSPENDED;
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_TASK_SUSPEND, (uint32_t)tcb, 0);
+#endif
     }
 
     os_sched_exit_critical();
@@ -405,6 +424,9 @@ os_status_t os_task_resume(os_task_handle_t handle)
 
     if (tcb->state == OS_TASK_SUSPENDED) {
         os_task_add_to_ready(tcb);
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_TASK_RESUME, (uint32_t)tcb, 0);
+#endif
     }
 
     os_sched_exit_critical();
@@ -423,6 +445,10 @@ os_status_t os_task_delay(os_tick_t ticks)
 
     /* Add to blocked list with timeout */
     os_task_add_to_blocked(current_task_ptr, ticks);
+
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_TASK_DELAY, (uint32_t)current_task_ptr, (uint32_t)ticks);
+#endif
 
     os_sched_exit_critical();
 

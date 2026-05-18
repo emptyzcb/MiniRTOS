@@ -11,6 +11,10 @@
 #include "scheduler.h"
 #include "port.h"
 
+#if OS_CONFIG_USE_TRACE
+#include "trace.h"
+#endif
+
 #if OS_CONFIG_USE_MUTEX
 
 /* ========== Internal Functions ========== */
@@ -176,6 +180,9 @@ os_status_t os_mutex_lock(os_mutex_t *mutex, os_tick_t timeout)
         mutex->owner = current;
         mutex->lock_count = 1;
         mutex->original_prio = current->priority;
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_MUTEX_LOCK, (uint32_t)mutex, (uint32_t)current->priority);
+#endif
         os_sched_exit_critical();
         return OS_OK;
     }
@@ -205,6 +212,11 @@ os_status_t os_mutex_lock(os_mutex_t *mutex, os_tick_t timeout)
     if (current->timed_out) {
         return OS_ERR_TIMEOUT;
     }
+
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_MUTEX_LOCK, (uint32_t)mutex, (uint32_t)current->priority);
+#endif
+
     return OS_OK;
 }
 
@@ -237,6 +249,10 @@ os_status_t os_mutex_unlock(os_mutex_t *mutex)
 
     /* Transfer ownership to highest-priority waiter, if any */
     woken_tcb = prv_wake_and_transfer(mutex);
+
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_MUTEX_UNLOCK, (uint32_t)mutex, 0);
+#endif
 
     os_sched_exit_critical();
 

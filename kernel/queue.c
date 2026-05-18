@@ -12,6 +12,10 @@
 #include "port.h"
 #include <string.h>
 
+#if OS_CONFIG_USE_TRACE
+#include "trace.h"
+#endif
+
 #if OS_CONFIG_USE_QUEUE
 
 /* ========== Internal Functions ========== */
@@ -176,6 +180,10 @@ os_status_t os_queue_send(os_queue_t *queue, const void *item,
         /* Wake highest-priority receiver if any */
         woken_tcb = prv_wake_task(&queue->recv_wait_list);
 
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_QUEUE_SEND, (uint32_t)queue, queue->count);
+#endif
+
         os_sched_exit_critical();
 
         /* Preempt if woken task has higher priority */
@@ -207,6 +215,11 @@ os_status_t os_queue_send(os_queue_t *queue, const void *item,
     if (((os_tcb_t*)os_task_get_current())->timed_out) {
         return OS_ERR_TIMEOUT;
     }
+
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_QUEUE_SEND, (uint32_t)queue, queue->count);
+#endif
+
     return OS_OK;
 }
 
@@ -256,6 +269,10 @@ os_status_t os_queue_receive(os_queue_t *queue, void *item,
         /* Wake highest-priority sender if any */
         woken_tcb = prv_wake_task(&queue->send_wait_list);
 
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_QUEUE_RECV, (uint32_t)queue, queue->count);
+#endif
+
         os_sched_exit_critical();
 
         if (woken_tcb != NULL) {
@@ -285,6 +302,11 @@ os_status_t os_queue_receive(os_queue_t *queue, void *item,
     if (((os_tcb_t*)os_task_get_current())->timed_out) {
         return OS_ERR_TIMEOUT;
     }
+
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_QUEUE_RECV, (uint32_t)queue, queue->count);
+#endif
+
     return OS_OK;
 }
 

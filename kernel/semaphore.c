@@ -10,6 +10,10 @@
 #include "scheduler.h"
 #include "port.h"
 
+#if OS_CONFIG_USE_TRACE
+#include "trace.h"
+#endif
+
 #if OS_CONFIG_USE_SEMAPHORE
 
 /* ========== Internal Functions ========== */
@@ -146,6 +150,9 @@ os_status_t os_sem_take(os_sem_t *sem, os_tick_t timeout)
 
     if (sem->count > 0) {
         sem->count--;
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_SEM_TAKE, (uint32_t)sem, sem->count);
+#endif
         os_sched_exit_critical();
         return OS_OK;
     }
@@ -165,6 +172,11 @@ os_status_t os_sem_take(os_sem_t *sem, os_tick_t timeout)
     if (((os_tcb_t*)os_task_get_current())->timed_out) {
         return OS_ERR_TIMEOUT;
     }
+
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_SEM_TAKE, (uint32_t)sem, sem->count);
+#endif
+
     return OS_OK;
 }
 
@@ -182,6 +194,10 @@ os_status_t os_sem_give(os_sem_t *sem)
         woken_tcb = prv_wake_task(sem);
         current = (os_tcb_t*)os_task_get_current();
 
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_SEM_GIVE, (uint32_t)sem, sem->count);
+#endif
+
         os_sched_exit_critical();
 
         if (woken_tcb != NULL && woken_tcb->priority < current->priority) {
@@ -192,6 +208,9 @@ os_status_t os_sem_give(os_sem_t *sem)
 
     if (sem->count < sem->max_count) {
         sem->count++;
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_SEM_GIVE, (uint32_t)sem, sem->count);
+#endif
         os_sched_exit_critical();
         return OS_OK;
     }

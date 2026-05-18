@@ -11,6 +11,10 @@
 #include "port.h"
 #include "os_config.h"
 
+#if OS_CONFIG_USE_TRACE
+#include "trace.h"
+#endif
+
 /* ========== Internal Data ========== */
 
 static bool scheduler_running = false;
@@ -128,6 +132,11 @@ void os_sched_select_next(void)
     }
 
     next_task->state = OS_TASK_RUNNING;
+
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_TASK_SWITCH, (uint32_t)current, (uint32_t)next_task);
+#endif
+
     os_task_set_current(next_task);
 }
 
