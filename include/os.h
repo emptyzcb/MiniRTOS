@@ -43,6 +43,10 @@
 #include "notify.h"
 #endif
 
+#if OS_CONFIG_USE_WATCHDOG
+#include "watchdog.h"
+#endif
+
 #if OS_CONFIG_USE_STATS
 #include "stats.h"
 #endif

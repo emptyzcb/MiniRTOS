@@ -83,6 +83,10 @@
 
 #define OS_CONFIG_USE_TASK_NOTIFY       1
 
+/* ========== Software Watchdog ========== */
+
+#define OS_CONFIG_USE_WATCHDOG          1
+
 /* ========== CPU Usage Statistics ========== */
 
 #define OS_CONFIG_USE_STATS             1

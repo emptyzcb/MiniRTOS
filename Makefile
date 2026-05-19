@@ -40,6 +40,7 @@ C_SOURCES =  \
 	kernel/stats.c \
 	kernel/sysinfo.c \
 	kernel/trace.c \
+	kernel/watchdog.c \
 	port/port.c \
 	app/main.c
 

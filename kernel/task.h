@@ -116,4 +116,7 @@ void os_task_check_stack_overflow(void);
 os_status_t os_task_register_idle_hook(os_idle_hook_t hook);
 os_status_t os_task_unregister_idle_hook(os_idle_hook_t hook);
 
+/* Task table iterator */
+os_task_handle_t os_task_get_by_index(uint32_t index);
+
 #endif /* OS_TASK_H */

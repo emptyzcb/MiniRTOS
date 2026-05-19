@@ -16,11 +16,15 @@
 #include "timer.h"
 #endif
 
+#if OS_CONFIG_USE_WATCHDOG
+#include "watchdog.h"
+#endif
+
 #if OS_CONFIG_USE_TRACE
 #include "trace.h"
 #endif
 
-#define OS_VERSION "MiniOS v0.4.0"
+#define OS_VERSION "MiniOS v0.5.0"
 
 /* ========== Internal Data ========== */
 
@@ -57,6 +61,11 @@ void os_kernel_init(void)
     os_trace_init();
 #endif
 
+#if OS_CONFIG_USE_WATCHDOG
+    /* Initialize watchdog subsystem */
+    os_wdt_init();
+#endif
+
     kernel_initialized = true;
 }
 
@@ -88,6 +97,11 @@ void os_kernel_tick_increment(void)
 #if OS_CONFIG_USE_SOFTWARE_TIMERS
     /* Process software timers */
     os_timer_tick();
+#endif
+
+#if OS_CONFIG_USE_WATCHDOG
+    /* Process watchdog countdowns */
+    os_wdt_tick();
 #endif
 
     /* Check if a context switch is needed */

@@ -644,6 +644,12 @@ uint32_t os_task_get_count(void)
     return task_count;
 }
 
+os_task_handle_t os_task_get_by_index(uint32_t index)
+{
+    if (index >= task_count) return NULL;
+    return (os_task_handle_t)task_table[index];
+}
+
 /* ========== Idle Hook Management ========== */
 
 os_status_t os_task_register_idle_hook(os_idle_hook_t hook)
