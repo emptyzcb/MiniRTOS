@@ -50,11 +50,10 @@ os_status_t os_task_notify(os_task_handle_t handle, uint32_t value)
 os_status_t os_task_notify_from_isr(os_task_handle_t handle, uint32_t value)
 {
     os_tcb_t *tcb = (os_tcb_t*)handle;
-    uint32_t mask;
 
     if (tcb == NULL) return OS_ERR_PARAM;
 
-    mask = os_port_enter_critical();
+    os_sched_enter_critical();
 
     tcb->notify_value = value;
     tcb->notify_pending = 1;
@@ -68,7 +67,7 @@ os_status_t os_task_notify_from_isr(os_task_handle_t handle, uint32_t value)
         os_sched_request_switch_from_isr();
     }
 
-    os_port_exit_critical(mask);
+    os_sched_exit_critical();
     return OS_OK;
 }
 

@@ -104,8 +104,11 @@ void os_kernel_tick_increment(void)
     os_wdt_tick();
 #endif
 
-    /* Check if a context switch is needed */
+#if !OS_CONFIG_USE_INTERRUPT_NESTING
+    /* Without interrupt nesting, select next task here (legacy behavior).
+     * With nesting enabled, PendSV handles this after all ISRs exit. */
     os_sched_select_next();
+#endif
 }
 
 const char* os_kernel_get_version(void)

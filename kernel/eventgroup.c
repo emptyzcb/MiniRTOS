@@ -181,12 +181,11 @@ os_status_t os_eventgroup_set_bits_from_isr(os_eventgroup_t *eg, uint32_t bits)
 {
     os_tcb_t *tcb;
     os_tcb_t *next;
-    uint32_t mask;
     bool need_switch = false;
 
     if (eg == NULL) return OS_ERR_PARAM;
 
-    mask = os_port_enter_critical();
+    os_sched_enter_critical();
 
     eg->bits |= bits;
 
@@ -211,7 +210,7 @@ os_status_t os_eventgroup_set_bits_from_isr(os_eventgroup_t *eg, uint32_t bits)
         tcb = next;
     }
 
-    os_port_exit_critical(mask);
+    os_sched_exit_critical();
 
     if (need_switch) {
         os_sched_request_switch_from_isr();

@@ -226,11 +226,10 @@ os_status_t os_queue_send(os_queue_t *queue, const void *item,
 os_status_t os_queue_send_from_isr(os_queue_t *queue, const void *item)
 {
     os_tcb_t *woken_tcb = NULL;
-    uint32_t mask;
 
     if (queue == NULL || item == NULL) return OS_ERR_PARAM;
 
-    mask = os_port_enter_critical();
+    os_sched_enter_critical();
 
     if (queue->count < queue->max_items) {
         memcpy(&queue->buffer[queue->tail], item, queue->item_size);
@@ -239,7 +238,7 @@ os_status_t os_queue_send_from_isr(os_queue_t *queue, const void *item)
 
         woken_tcb = prv_wake_task(&queue->recv_wait_list);
 
-        os_port_exit_critical(mask);
+        os_sched_exit_critical();
 
         if (woken_tcb != NULL) {
             os_sched_request_switch_from_isr();
@@ -247,7 +246,7 @@ os_status_t os_queue_send_from_isr(os_queue_t *queue, const void *item)
         return OS_OK;
     }
 
-    os_port_exit_critical(mask);
+    os_sched_exit_critical();
     return OS_ERR_FULL;
 }
 
@@ -313,11 +312,10 @@ os_status_t os_queue_receive(os_queue_t *queue, void *item,
 os_status_t os_queue_receive_from_isr(os_queue_t *queue, void *item)
 {
     os_tcb_t *woken_tcb = NULL;
-    uint32_t mask;
 
     if (queue == NULL || item == NULL) return OS_ERR_PARAM;
 
-    mask = os_port_enter_critical();
+    os_sched_enter_critical();
 
     if (queue->count > 0) {
         memcpy(item, &queue->buffer[queue->head], queue->item_size);
@@ -326,7 +324,7 @@ os_status_t os_queue_receive_from_isr(os_queue_t *queue, void *item)
 
         woken_tcb = prv_wake_task(&queue->send_wait_list);
 
-        os_port_exit_critical(mask);
+        os_sched_exit_critical();
 
         if (woken_tcb != NULL) {
             os_sched_request_switch_from_isr();
@@ -334,7 +332,7 @@ os_status_t os_queue_receive_from_isr(os_queue_t *queue, void *item)
         return OS_OK;
     }
 
-    os_port_exit_critical(mask);
+    os_sched_exit_critical();
     return OS_ERR_EMPTY;
 }
 

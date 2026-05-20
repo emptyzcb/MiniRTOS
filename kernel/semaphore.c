@@ -222,15 +222,14 @@ os_status_t os_sem_give(os_sem_t *sem)
 os_status_t os_sem_give_from_isr(os_sem_t *sem)
 {
     os_tcb_t *woken_tcb;
-    uint32_t mask;
 
     if (sem == NULL) return OS_ERR_PARAM;
 
-    mask = os_port_enter_critical();
+    os_sched_enter_critical();
 
     if (sem->wait_list != NULL) {
         woken_tcb = prv_wake_task(sem);
-        os_port_exit_critical(mask);
+        os_sched_exit_critical();
 
         if (woken_tcb != NULL) {
             os_sched_request_switch_from_isr();
@@ -240,11 +239,11 @@ os_status_t os_sem_give_from_isr(os_sem_t *sem)
 
     if (sem->count < sem->max_count) {
         sem->count++;
-        os_port_exit_critical(mask);
+        os_sched_exit_critical();
         return OS_OK;
     }
 
-    os_port_exit_critical(mask);
+    os_sched_exit_critical();
     return OS_ERR_FULL;
 }
 

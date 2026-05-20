@@ -21,6 +21,14 @@ static bool scheduler_running = false;
 static uint32_t critical_nesting = 0;
 static volatile uint32_t yield_pending = 0;
 
+/* Saved PRIMASK/BASEPRI for nested critical sections */
+#define CRITICAL_NESTING_MAX 4
+static uint32_t saved_mask[CRITICAL_NESTING_MAX];
+
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+static volatile uint32_t irq_nesting_depth = 0;
+#endif
+
 #if OS_CONFIG_USE_STATS
 static os_tick_t last_switch_tick = 0;
 extern os_tick_t os_kernel_get_tick(void);
@@ -36,6 +44,9 @@ void os_sched_init(void)
     scheduler_running = false;
     critical_nesting = 0;
     yield_pending = 0;
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+    irq_nesting_depth = 0;
+#endif
 }
 
 void os_sched_start(void)
@@ -68,7 +79,9 @@ void os_sched_yield(void)
 void os_sched_enter_critical(void)
 {
     uint32_t mask = os_port_enter_critical();
-    (void)mask;
+    if (critical_nesting < CRITICAL_NESTING_MAX) {
+        saved_mask[critical_nesting] = mask;
+    }
     critical_nesting++;
 }
 
@@ -77,7 +90,7 @@ void os_sched_exit_critical(void)
     if (critical_nesting > 0) {
         critical_nesting--;
         if (critical_nesting == 0) {
-            os_port_exit_critical(0);
+            os_port_exit_critical(saved_mask[0]);
         }
     }
 }
@@ -86,6 +99,36 @@ void os_sched_request_switch_from_isr(void)
 {
     yield_pending = 1;
 }
+
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+
+bool os_sched_consume_yield_pending(void)
+{
+    if (yield_pending) {
+        yield_pending = 0;
+        return true;
+    }
+    return false;
+}
+
+void os_sched_isr_enter(void)
+{
+    irq_nesting_depth++;
+}
+
+void os_sched_isr_exit(void)
+{
+    if (irq_nesting_depth > 0) {
+        irq_nesting_depth--;
+        if (irq_nesting_depth == 0) {
+            if (os_sched_consume_yield_pending()) {
+                os_port_yield();
+            }
+        }
+    }
+}
+
+#endif /* OS_CONFIG_USE_INTERRUPT_NESTING */
 
 void os_sched_select_next(void)
 {

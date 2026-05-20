@@ -2,6 +2,7 @@
 #define OS_SCHEDULER_H
 
 #include "os_types.h"
+#include "os_config.h"
 
 /* ========== Scheduler API ========== */
 
@@ -50,5 +51,26 @@ void os_sched_select_next(void);
  * Get the current critical section nesting depth.
  */
 uint32_t os_sched_get_critical_nesting(void);
+
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+
+/*
+ * Called at ISR entry. Increments the ISR nesting depth counter.
+ */
+void os_sched_isr_enter(void);
+
+/*
+ * Called at ISR exit. Decrements nesting depth; on exit from
+ * the outermost ISR, triggers PendSV if a yield was pending.
+ */
+void os_sched_isr_exit(void);
+
+/*
+ * Read and clear the yield_pending flag.
+ * Returns true if a yield was pending.
+ */
+bool os_sched_consume_yield_pending(void);
+
+#endif /* OS_CONFIG_USE_INTERRUPT_NESTING */
 
 #endif /* OS_SCHEDULER_H */

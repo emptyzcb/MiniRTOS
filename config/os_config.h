@@ -58,6 +58,29 @@
 /* SysTick interrupt priority */
 #define OS_CONFIG_SYSTICK_PRIORITY      0xF
 
+/* Enable interrupt nesting (BASEPRI-based critical sections).
+ * 0 = use PRIMASK (global interrupt disable, legacy behavior)
+ * 1 = use BASEPRI (only mask interrupts at or below threshold) */
+#define OS_CONFIG_USE_INTERRUPT_NESTING         0
+
+/* Maximum interrupt priority that may call RTOS _from_isr APIs.
+ * Interrupts with logical priority 0 .. (threshold-1) are never masked.
+ * Interrupts with logical priority threshold .. 15 are masked in critical sections.
+ * Must be > 0, < (1 << OS_CONFIG_NVIC_PRIO_BITS), and >= PendSV/SysTick priority. */
+#define OS_CONFIG_MAX_SYSCALL_INTERRUPT_PRIORITY 5
+
+/* Compile-time validation */
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+    _Static_assert(OS_CONFIG_MAX_SYSCALL_INTERRUPT_PRIORITY > 0,
+        "MAX_SYSCALL_INTERRUPT_PRIORITY must be > 0");
+    _Static_assert(OS_CONFIG_MAX_SYSCALL_INTERRUPT_PRIORITY < (1 << OS_CONFIG_NVIC_PRIO_BITS),
+        "MAX_SYSCALL_INTERRUPT_PRIORITY must be < (1 << NVIC_PRIO_BITS)");
+    _Static_assert(OS_CONFIG_PENDSV_PRIORITY >= OS_CONFIG_MAX_SYSCALL_INTERRUPT_PRIORITY,
+        "PENDSV_PRIORITY must be >= MAX_SYSCALL_INTERRUPT_PRIORITY");
+    _Static_assert(OS_CONFIG_SYSTICK_PRIORITY >= OS_CONFIG_MAX_SYSCALL_INTERRUPT_PRIORITY,
+        "SYSTICK_PRIORITY must be >= MAX_SYSCALL_INTERRUPT_PRIORITY");
+#endif
+
 /* ========== Synchronization Primitives ========== */
 
 /* Queue */

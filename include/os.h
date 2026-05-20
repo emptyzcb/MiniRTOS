@@ -75,6 +75,15 @@
 #define OS_ENTER_CRITICAL()     os_sched_enter_critical()
 #define OS_EXIT_CRITICAL()      os_sched_exit_critical()
 
+/* ISR entry/exit for interrupt nesting */
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+#define OS_ISR_ENTER()          os_port_isr_enter()
+#define OS_ISR_EXIT()           os_port_isr_exit()
+#else
+#define OS_ISR_ENTER()          ((void)0)
+#define OS_ISR_EXIT()           ((void)0)
+#endif
+
 /* Yield current task */
 #define OS_YIELD()              os_sched_yield()
 

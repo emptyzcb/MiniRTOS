@@ -94,6 +94,25 @@ void os_port_nvic_disable_irq(int32_t irqn);
  */
 void os_port_nvic_set_priority_init(void);
 
+/* ========== ISR Entry/Exit (Interrupt Nesting) ========== */
+
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+
+/*
+ * Called at the start of an ISR that may invoke RTOS _from_isr APIs.
+ * Increments the ISR nesting depth counter.
+ */
+void os_port_isr_enter(void);
+
+/*
+ * Called at the end of an ISR that may invoke RTOS _from_isr APIs.
+ * Decrements nesting depth; on exit from the outermost ISR,
+ * triggers PendSV if a context switch was requested.
+ */
+void os_port_isr_exit(void);
+
+#endif /* OS_CONFIG_USE_INTERRUPT_NESTING */
+
 /* ========== Debug Output ========== */
 
 /*

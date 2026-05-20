@@ -72,6 +72,9 @@ typedef struct {
 
 #define CORTEX_M3_PRIO_BITS     4   /* STM32F1 uses 4 priority bits */
 
+/* BASEPRI shift: Cortex-M BASEPRI uses upper N bits of the priority byte */
+#define BASEPRI_SHIFT           (8 - OS_CONFIG_NVIC_PRIO_BITS)
+
 /* AIRCR register constants */
 #define SCB_AIRCR_VECTKEY       0x05FA0000UL
 #define SCB_AIRCR_PRIGROUP_MASK 0x00000700UL
@@ -131,6 +134,30 @@ os_stack_t* os_port_stack_init(os_task_func_t func,
 
 /* ========== Critical Sections ========== */
 
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+
+/* BASEPRI-based critical sections: only mask interrupts at or below threshold */
+
+uint32_t os_port_enter_critical(void)
+{
+    uint32_t basepri;
+    uint32_t threshold = (OS_CONFIG_MAX_SYSCALL_INTERRUPT_PRIORITY << BASEPRI_SHIFT) & 0xFFUL;
+    __asm volatile("mrs %0, basepri" : "=r"(basepri));
+    __asm volatile("msr basepri, %0" :: "r"(threshold) : "memory");
+    __asm volatile("dsb\n\tisb" ::: "memory");
+    return basepri;
+}
+
+void os_port_exit_critical(uint32_t mask)
+{
+    __asm volatile("msr basepri, %0" :: "r"(mask) : "memory");
+    __asm volatile("dsb\n\tisb" ::: "memory");
+}
+
+#else
+
+/* PRIMASK-based critical sections: global interrupt disable (legacy) */
+
 uint32_t os_port_enter_critical(void)
 {
     uint32_t primask;
@@ -143,6 +170,27 @@ void os_port_exit_critical(uint32_t mask)
 {
     __asm volatile("msr primask, %0" :: "r"(mask) : "memory");
 }
+
+#endif /* OS_CONFIG_USE_INTERRUPT_NESTING */
+
+/* ========== ISR Entry/Exit (for interrupt nesting) ========== */
+
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+
+extern void os_sched_isr_enter(void);
+extern void os_sched_isr_exit(void);
+
+void os_port_isr_enter(void)
+{
+    os_sched_isr_enter();
+}
+
+void os_port_isr_exit(void)
+{
+    os_sched_isr_exit();
+}
+
+#endif /* OS_CONFIG_USE_INTERRUPT_NESTING */
 
 /* ========== PendSV & SysTick ========== */
 
@@ -360,10 +408,17 @@ void os_port_start_first_task(void)
 
 void SysTick_Handler(void)
 {
-    /* Increment OS tick */
     extern void os_kernel_tick_increment(void);
+
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+    os_port_isr_enter();
+#endif
+
     os_kernel_tick_increment();
 
-    /* Request context switch if needed */
-    os_port_yield();
+#if OS_CONFIG_USE_INTERRUPT_NESTING
+    os_port_isr_exit();   /* Triggers PendSV if yield_pending is set */
+#else
+    os_port_yield();      /* Legacy: unconditionally trigger PendSV */
+#endif
 }
