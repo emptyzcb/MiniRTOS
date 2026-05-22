@@ -16,6 +16,10 @@
 #include "timer.h"
 #endif
 
+#if OS_CONFIG_USE_TICKLESS_IDLE
+#include "tickless.h"
+#endif
+
 #if OS_CONFIG_USE_WATCHDOG
 #include "watchdog.h"
 #endif
@@ -54,6 +58,11 @@ void os_kernel_init(void)
 #if OS_CONFIG_USE_SOFTWARE_TIMERS
     /* Initialize timer subsystem */
     os_timer_init();
+#endif
+
+#if OS_CONFIG_USE_TICKLESS_IDLE
+    /* Initialize tickless idle subsystem */
+    os_tickless_init();
 #endif
 
 #if OS_CONFIG_USE_TRACE

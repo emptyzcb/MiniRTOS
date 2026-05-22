@@ -1,7 +1,7 @@
 /*
- * main.c - MiniOS Demo Application (v0.3.0)
+ * main.c - MiniOS Demo Application (v0.5.0)
  *
- * Demonstrates all OS features including v0.3.0 additions:
+ * Demonstrates all OS features:
  *   - Task creation with different priorities
  *   - Task delay and scheduling
  *   - Heap memory allocation
@@ -11,6 +11,8 @@
  *   - Software timer (periodic callback)
  *   - Event group (multi-condition synchronization)
  *   - Task notification (lightweight signaling)
+ *   - Mailbox (single-element message passing)
+ *   - Software watchdog (task liveness monitoring)
  *   - CPU usage statistics
  *   - Idle hook
  *   - System info query
@@ -46,6 +48,11 @@ static os_eventgroup_t demo_events;
 /* Task handles for notification demo */
 static os_task_handle_t sensor_task_handle;
 static os_task_handle_t monitor_task_handle;
+static os_task_handle_t producer_task_handle;
+static os_task_handle_t consumer_task_handle;
+
+/* Mailbox: single-element signaling */
+static os_mailbox_t alarm_mailbox;
 
 /* ========== Timer Callback ========== */
 
@@ -83,6 +90,15 @@ static void producer_task(void *param)
         /* Notify sensor task via task notification */
         os_task_notify(sensor_task_handle, value);
 
+        /* Send alarm via mailbox every 10 iterations */
+        if ((value % 10) == 0) {
+            uint32_t alarm_code = 0xA000 | value;
+            os_mailbox_send(&alarm_mailbox, &alarm_code, OS_WAIT_NONE);
+        }
+
+        /* Feed watchdog */
+        os_wdt_feed();
+
         OS_DELAY_MS(200);
     }
 }
@@ -94,6 +110,7 @@ static void consumer_task(void *param)
 {
     (void)param;
     uint32_t received;
+    uint32_t alarm;
 
     while (1) {
         /* Wait for data */
@@ -112,6 +129,14 @@ static void consumer_task(void *param)
             /* Trace the event */
             os_trace_record(OS_TRACE_USER + 1, received, shared_counter);
         }
+
+        /* Non-blocking check for alarm from mailbox */
+        if (os_mailbox_receive(&alarm_mailbox, &alarm, OS_WAIT_NONE) == OS_OK) {
+            os_trace_record(OS_TRACE_USER + 4, alarm, 0);
+        }
+
+        /* Feed watchdog */
+        os_wdt_feed();
     }
 }
 
@@ -198,6 +223,7 @@ int main(void)
     os_sem_create_binary(&data_ready_sem);
     os_mutex_create(&counter_mutex);
     os_eventgroup_create(&demo_events);
+    os_mailbox_create(&alarm_mailbox, sizeof(uint32_t));
 
     /* Create software timer (1 second auto-reload heartbeat) */
     os_timer_create(&heartbeat_timer, "HB", OS_CONFIG_TICK_RATE_HZ,
@@ -206,10 +232,10 @@ int main(void)
 
     /* Create application tasks */
     os_task_create(producer_task,    "PROD",  NULL, 2,
-                   task1_stack, sizeof(task1_stack), NULL);
+                   task1_stack, sizeof(task1_stack), &producer_task_handle);
 
     os_task_create(consumer_task,    "CONS",  NULL, 3,
-                   task2_stack, sizeof(task2_stack), NULL);
+                   task2_stack, sizeof(task2_stack), &consumer_task_handle);
 
     os_task_create(event_waiter_task,"EVT",   NULL, 4,
                    task3_stack, sizeof(task3_stack), NULL);
@@ -219,6 +245,10 @@ int main(void)
 
     os_task_create(monitor_task,     "MON",   NULL, 6,
                    task5_stack, sizeof(task5_stack), &monitor_task_handle);
+
+    /* Register watchdog for critical tasks (deadline: 5000 ticks = 5s) */
+    os_wdt_register(producer_task_handle, 5000, NULL, NULL);
+    os_wdt_register(consumer_task_handle, 5000, NULL, NULL);
 
     /* Start the OS (never returns) */
     os_kernel_start();

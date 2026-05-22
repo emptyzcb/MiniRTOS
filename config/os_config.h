@@ -102,6 +102,12 @@
 /* Memory Pool */
 #define OS_CONFIG_USE_MEMPOOL           1
 
+/* Mailbox (single-element queue) */
+#define OS_CONFIG_USE_MAILBOX           1
+
+/* Tickless Idle (low-power mode, stops SysTick during idle) */
+#define OS_CONFIG_USE_TICKLESS_IDLE     0
+
 /* ========== Task Notification ========== */
 
 #define OS_CONFIG_USE_TASK_NOTIFY       1

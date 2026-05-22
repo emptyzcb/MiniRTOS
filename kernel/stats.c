@@ -31,9 +31,14 @@ os_tick_t os_stats_get_run_time(os_task_handle_t handle)
 
 void os_stats_reset(void)
 {
-    /* Reset baseline: the next context switch restarts accumulation.
-     * Individual task counters are not zeroed here because we cannot
-     * iterate the task list. Callers should treat uptime as reset. */
+    os_tcb_t *tcb;
+
+    /* Zero run_time_ticks for every task in the task table */
+    for (uint32_t i = 0; ; i++) {
+        tcb = (os_tcb_t*)os_task_get_by_index(i);
+        if (tcb == NULL) break;
+        tcb->run_time_ticks = 0;
+    }
 }
 
 #endif /* OS_CONFIG_USE_STATS */

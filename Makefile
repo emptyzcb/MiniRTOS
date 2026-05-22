@@ -36,6 +36,8 @@ C_SOURCES =  \
 	kernel/timer.c \
 	kernel/eventgroup.c \
 	kernel/mempool.c \
+	kernel/mailbox.c \
+	kernel/tickless.c \
 	kernel/notify.c \
 	kernel/stats.c \
 	kernel/sysinfo.c \

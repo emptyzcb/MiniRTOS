@@ -7,7 +7,7 @@ MiniOS 是一个面向 ARM Cortex-M3 (STM32F103) 的轻量级嵌入式实时操�
 - **目标平台**: STM32F103C8T6 (Cortex-M3, 72MHz, 64KB Flash, 20KB RAM)
 - **语言**: C11 + ARM Assembly
 - **构建工具**: arm-none-eabi-gcc + Make
-- **版本**: v0.4.0 (新增同步原语、IPC、软件定时器、事件组、内存池)
+- **版本**: v0.5.0 (新增邮箱、Tickless Idle)
 
 ---
 
@@ -513,26 +513,33 @@ make flash
 | `kernel/timer.c` | 软件定时器 | timer.h, semaphore.h, task.h, heap4.h |
 | `kernel/eventgroup.c` | 事件标志组 | task.h, scheduler.h, port.h |
 | `kernel/mempool.c` | 内存池分配器 | mempool.h, os_config.h |
+| `kernel/mailbox.c` | 邮箱 (单元素队列) | mailbox.h, queue.h |
+| `kernel/tickless.c` | Tickless Idle 低功耗 | tickless.h, port.h, kernel.h |
+| `kernel/notify.c` | 任务通知 | notify.h, task.h, scheduler.h |
+| `kernel/watchdog.c` | 软件看门狗 | watchdog.h, task.h, kernel.h |
+| `kernel/stats.c` | CPU 使用统计 | stats.h, task.h, kernel.h |
+| `kernel/sysinfo.c` | 系统信息查询 | sysinfo.h, task.h, kernel.h, heap4.h |
+| `kernel/trace.c` | Trace 日志 | trace.h, kernel.h, port.h |
 | `port/port.c` | Cortex-M3 移植层 | task.h, os_config.h |
 | `app/main.c` | 应用入口 | os.h |
 | `port/startup_stm32f103.s` | 启动汇编 | stm32f103.ld |
 
-### 内存占用 (v0.2.0 实测)
+### 内存占用 (v0.5.0 实测)
 
 | 区域 | 大小 | 说明 |
 |------|------|------|
-| 代码 (.text) | ~5.5 KB | 内核 + 同步原语 + 应用代码 |
-| 常量 (.rodata) | ~200 B | 版本字符串等 |
-| BSS (.bss) | ~18.1 KB | 堆池 (14KB) + 任务栈 + 定时器栈 |
-| **总计 Flash** | **~5.7 KB** | 64KB 的 8.9% |
-| **总计 RAM** | **~18.5 KB** | 20KB 的 92.5% |
+| 代码 (.text) | ~16.4 KB | 内核 + 同步原语 + 应用代码 |
+| 已初始化数据 (.data) | ~2.1 KB | 全局变量初始值 |
+| BSS (.bss) | ~14.4 KB | 堆池 (10KB) + 任务栈 + 定时器栈 |
+| **总计 Flash** | **~18.4 KB** | 64KB 的 ~29% (.text + .data) |
+| **总计 RAM** | **~16.5 KB** | 20KB 的 ~82% (.data + .bss) |
 
 ### 资源预算
 
-- **Flash**: 64KB, 实际使用 ~5.7KB (8.9%)
-- **RAM**: 20KB, 实际使用 ~18.5KB (92.5%) - 主要是堆池和任务栈
+- **Flash**: 64KB, 实际使用 ~18.4KB (29%)
+- **RAM**: 20KB, 实际使用 ~16.5KB (82%) - 主要是堆池和任务栈
 - **最大任务数**: 16
-- **堆大小**: 14KB (可配置)
+- **堆大小**: 10KB (可配置)
 - **定时器服务栈**: 256B
 
 ---
@@ -567,11 +574,11 @@ make flash
 1. ~~**同步原语**: 互斥锁 (Mutex)、信号量 (Semaphore)、事件标志组~~ ✅ 已实现
 2. ~~**IPC**: 消息队列 (Queue)~~ ✅ 已实现
 3. ~~**软件定时器**: 基于 tick 的回调定时器~~ ✅ 已实现
-4. **邮箱 (Mailbox)**: 基于队列的单元素消息传递
+4. ~~**邮箱 (Mailbox)**: 基于队列的单元素消息传递~~ ✅ 已实现 (v0.5.0)
 5. **中断管理**: 优先级分组、中断嵌套
 6. ~~**内存池**: 固定大小块分配器 (pool allocator)~~ ✅ 已实现
-7. **调试工具**: 任务状态查看、运行时统计、Trace 支持
-8. **低功耗**: Tickless Idle 模式
+7. ~~**调试工具**: 任务状态查看、运行时统计、Trace 支持~~ ✅ 已实现
+8. ~~**低功耗**: Tickless Idle 模式~~ ✅ 已实现 (v0.5.0)
 9. **移植**: 扩展到 Cortex-M0/M4/M7
 
 ---

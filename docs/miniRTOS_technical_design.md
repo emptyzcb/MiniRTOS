@@ -1,6 +1,6 @@
 # MiniRTOS 技术设计文档
 
-**版本**: v0.4.0
+**版本**: v0.5.0
 **目标平台**: ARM Cortex-M3 (STM32F103C8T6)
 **语言**: C11 + ARM Thumb-2 Assembly
 
@@ -106,7 +106,7 @@ MiniRTOS 的设计思路可以用一句话概括：**用定时器中断驱动调
 +-------------------------------------------------------+
 |              Heap-4 内存管理 (kernel/heap4.c)           |
 |  首次适配 + 相邻空闲块合并                              |
-|  16KB 静态堆池                                          |
+|  10KB 静态堆池                                          |
 +-------------------------------------------------------+
                            |
                            | 硬件抽象
@@ -278,7 +278,7 @@ typedef enum {
 #define OS_CONFIG_TIME_SLICE_TICKS      5       // 时间片长度 (5 ticks = 5ms)
 
 // 堆相关
-#define OS_CONFIG_HEAP_SIZE             (16*1024)   // 堆大小 16KB
+#define OS_CONFIG_HEAP_SIZE             (10*1024)   // 堆大小 10KB
 #define OS_CONFIG_HEAP_ALIGNMENT        8       // 堆对齐粒度
 
 // 调试
@@ -809,7 +809,7 @@ Heap-4 是 FreeRTOS 中最常用的堆分配算法，MiniRTOS 的实现与其设
 ### 8.2 内存布局
 
 ```
-堆内存池 (16KB, 8字节对齐):
+堆内存池 (10KB, 8字节对齐):
 +--------+----------+--------+----------+--------+----------+
 | Header | Data     | Header | Data     | Header | Data     |
 | 16B    | N bytes  | 16B    | M bytes  | 16B    | K bytes  |
@@ -1563,9 +1563,9 @@ Flash (0x08000000, 64KB):
 
 | 功能 | 说明 | 状态 |
 |------|------|------|
-| Tickless Idle | 空闲时停止 SysTick，进一步降低功耗 | 待实现 |
+| ~~Tickless Idle~~ | ~~空闲时停止 SysTick，进一步降低功耗~~ | ✅ |
 | 内存池 | 固定大小块分配器，O(1) 分配无碎片 | ✅ |
-| 邮箱 (Mailbox) | 基于队列的单元素消息传递 | 待实现 |
+| ~~邮箱 (Mailbox)~~ | ~~基于队列的单元素消息传递~~ | ✅ |
 | 移植到 Cortex-M0/M4/M7 | 扩展硬件支持 | 待实现 |
 
 ---
@@ -1929,7 +1929,142 @@ void pool_demo(void)
 
 ---
 
-## 23. TCB 扩展 — v0.2.0 新增
+## 23. 邮箱 (mailbox.c) — v0.5.0 新增
+
+### 23.1 设计目标
+
+邮箱是容量为 1 的消息队列，用于单值信号传递。相比通用队列，邮箱接口更简洁，语义更明确。
+
+### 23.2 实现方式
+
+邮箱内部封装一个 `os_queue_t`，固定 `max_items = 1`。所有操作委托给队列 API。
+
+```c
+typedef struct os_mailbox {
+    os_queue_t  queue;              /* Underlying queue (capacity 1) */
+} os_mailbox_t;
+```
+
+### 23.3 与队列的区别
+
+| 特性 | 队列 (Queue) | 邮箱 (Mailbox) |
+|------|-------------|---------------|
+| 容量 | 可配置 (N) | 固定 1 |
+| 语义 | 多元素缓冲 | 单值信号 |
+| 典型用途 | 生产者-消费者流水线 | 告警、状态通知 |
+| API 复杂度 | 相同 | 相同但语义更清晰 |
+
+### 23.4 API 参考
+
+| 函数 | 说明 | 返回值 |
+|------|------|--------|
+| `os_mailbox_create(mb, item_size)` | 创建邮箱 | `os_status_t` |
+| `os_mailbox_delete(mb)` | 删除邮箱 | `os_status_t` |
+| `os_mailbox_send(mb, item, timeout)` | 发送 (满时阻塞) | `os_status_t` |
+| `os_mailbox_receive(mb, item, timeout)` | 接收 (空时阻塞) | `os_status_t` |
+| `os_mailbox_send_from_isr(mb, item)` | 发送 (ISR 安全) | `os_status_t` |
+| `os_mailbox_receive_from_isr(mb, item)` | 接收 (ISR 安全) | `os_status_t` |
+| `os_mailbox_is_empty(mb)` | 是否为空 | `bool` |
+| `os_mailbox_is_full(mb)` | 是否已满 | `bool` |
+
+### 23.5 使用示例
+
+```c
+static os_mailbox_t alarm_mb;
+
+void alarm_task(void *param)
+{
+    uint32_t code;
+    os_mailbox_create(&alarm_mb, sizeof(uint32_t));
+
+    while (1) {
+        if (os_mailbox_receive(&alarm_mb, &code, OS_WAIT_FOREVER) == OS_OK) {
+            handle_alarm(code);
+        }
+    }
+}
+
+void isr_handler(void)
+{
+    uint32_t code = 0xDEAD;
+    os_mailbox_send_from_isr(&alarm_mb, &code);
+}
+```
+
+### 23.6 配置宏
+
+```c
+/* config/os_config.h */
+#define OS_CONFIG_USE_MAILBOX   1   // 启用邮箱模块 (设为 0 可裁剪)
+```
+
+---
+
+## 24. Tickless Idle (tickless.c) — v0.5.0 新增
+
+### 24.1 设计目标
+
+在空闲期间停止 SysTick 定时器，降低 CPU 功耗。适用于电池供电或低功耗应用场景。
+
+### 24.2 工作原理
+
+```
+正常模式:
+  SysTick 每 1ms 中断 → 唤醒 CPU → 处理 → WFI → SysTick 中断 → ...
+  即使没有任务需要运行，CPU 仍被每 1ms 唤醒一次。
+
+Tickless 模式:
+  空闲任务发现下一个唤醒在 N ms 后
+    → 停止 SysTick
+    → 配置一次性唤醒定时器 (N ms)
+    → WFI (CPU 深度睡眠)
+    → 定时器到期唤醒
+    → 计算经过的 tick 数
+    → 重启 SysTick
+    → 补偿丢失的 tick
+```
+
+### 24.3 实现细节
+
+**进入 Tickless**:
+1. 读取当前 SysTick VAL（当前 tick 中剩余的 SysTick 周期数）
+2. 停止周期性 SysTick
+3. 计算总睡眠周期数 = `remaining + (expected_ticks - 1) * reload`
+4. 配置 SysTick 为一次性定时器（无中断，轮询 COUNTFLAG）
+5. 执行 WFI
+
+**退出 Tickless**:
+1. 读取 SysTick VAL 计算实际经过的周期数
+2. 转换为系统 tick 数
+3. 重启周期性 SysTick
+4. 返回经过的 tick 数
+
+### 24.4 API 参考
+
+| 函数 | 说明 |
+|------|------|
+| `os_tickless_init()` | 初始化 (os_kernel_init 自动调用) |
+| `os_tickless_idle_enter(ticks)` | 进入 tickless 模式 |
+| `os_tickless_idle_exit()` | 退出，返回经过的 tick 数 |
+| `os_tickless_is_active()` | 查询是否在 tickless 模式 |
+
+### 24.5 配置宏
+
+```c
+/* config/os_config.h */
+#define OS_CONFIG_USE_TICKLESS_IDLE     0   // 默认关闭
+#define OS_TICKLESS_MIN_IDLE_TICKS      5   // 最小空闲 tick 才进入
+```
+
+### 24.6 限制
+
+- SysTick 是 24 位定时器，最大睡眠时间约 16 秒 (72MHz)
+- 唤醒后有微小的 tick 精度损失（几个 SysTick 周期）
+- 需要配合实际硬件测试功耗降低效果
+
+---
+
+## 25. TCB 扩展 — v0.2.0 新增
 
 ### 22.1 新增字段
 

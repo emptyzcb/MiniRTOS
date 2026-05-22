@@ -39,6 +39,14 @@
 #include "mempool.h"
 #endif
 
+#if OS_CONFIG_USE_MAILBOX
+#include "mailbox.h"
+#endif
+
+#if OS_CONFIG_USE_TICKLESS_IDLE
+#include "tickless.h"
+#endif
+
 #if OS_CONFIG_USE_TASK_NOTIFY
 #include "notify.h"
 #endif
@@ -111,6 +119,12 @@
 #if OS_CONFIG_USE_MUTEX
 #define OS_MUTEX_LOCK(m, t)            os_mutex_lock(m, t)
 #define OS_MUTEX_UNLOCK(m)             os_mutex_unlock(m)
+#endif
+
+/* Mailbox convenience macros */
+#if OS_CONFIG_USE_MAILBOX
+#define OS_MAILBOX_SEND(m, item, t)    os_mailbox_send(m, item, t)
+#define OS_MAILBOX_RECEIVE(m, item, t) os_mailbox_receive(m, item, t)
 #endif
 
 #endif /* OS_H */

@@ -17,6 +17,11 @@
 #include "trace.h"
 #endif
 
+#if OS_CONFIG_USE_TICKLESS_IDLE
+#include "tickless.h"
+extern void os_kernel_tick_increment(void);
+#endif
+
 /* ========== Internal Data ========== */
 
 /* Ready list: one linked list per priority level */
@@ -98,10 +103,46 @@ static uint32_t prv_calc_high_water(os_stack_t *stack_base, uint32_t stack_size)
 
 /* ========== Idle Task ========== */
 
+#if OS_CONFIG_USE_TICKLESS_IDLE
+/*
+ * Get the number of ticks until the next blocked task wakes up.
+ * Returns OS_WAIT_FOREVER if the blocked list is empty.
+ */
+static os_tick_t prv_get_next_wake_ticks(void)
+{
+    os_tcb_t *tcb = blocked_list;
+    os_tick_t min_ticks = OS_WAIT_FOREVER;
+
+    while (tcb != NULL) {
+        if (tcb->delay_ticks > 0 && tcb->delay_ticks < min_ticks) {
+            min_ticks = tcb->delay_ticks;
+        }
+        tcb = tcb->next;
+    }
+    return min_ticks;
+}
+#endif
+
 static void idle_task_func(void *param)
 {
     (void)param;
     while (1) {
+#if OS_CONFIG_USE_TICKLESS_IDLE
+        {
+            os_tick_t idle_ticks = prv_get_next_wake_ticks();
+            if (idle_ticks >= OS_TICKLESS_MIN_IDLE_TICKS) {
+                os_tick_t elapsed;
+                os_sched_enter_critical();
+                os_tickless_idle_enter(idle_ticks);
+                elapsed = os_tickless_idle_exit();
+                os_sched_exit_critical();
+                /* Advance the kernel tick for all elapsed ticks */
+                for (os_tick_t i = 0; i < elapsed; i++) {
+                    os_kernel_tick_increment();
+                }
+            }
+        }
+#endif
         if (idle_hook_count > 0) {
             for (uint32_t i = 0; i < idle_hook_count; i++) {
                 if (idle_hooks[i] != NULL) {

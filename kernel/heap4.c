@@ -174,16 +174,15 @@ void* os_heap_alloc(uint32_t size)
         block->size = size;
         block->next = new_block;
 
-        free_bytes_remaining -= sizeof(os_block_header_t);
+        /* Free reduced by user data + header consumed by split */
+        free_bytes_remaining -= (size + sizeof(os_block_header_t));
     } else {
-        /* Use the whole block (not enough room to split) */
-        /* Remove from free list */
-        /* This is handled implicitly by marking allocated */
+        /* No split: entire block consumed */
+        free_bytes_remaining -= block_size;
     }
 
     /* Mark as allocated */
     prv_block_set_allocated(block);
-    free_bytes_remaining -= prv_block_get_size(block);
 
     /* Update high-water mark */
     if (free_bytes_remaining < min_free_bytes_ever) {
