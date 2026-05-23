@@ -1,7 +1,7 @@
 # MiniRTOS 技术设计文档
 
-**版本**: v0.5.0
-**目标平台**: ARM Cortex-M3 (STM32F103C8T6)
+**版本**: v0.6.0
+**目标平台**: ARM Cortex-M (STM32F103/F030/F407/F746)
 **语言**: C11 + ARM Thumb-2 Assembly
 
 ---
@@ -1566,7 +1566,7 @@ Flash (0x08000000, 64KB):
 | ~~Tickless Idle~~ | ~~空闲时停止 SysTick，进一步降低功耗~~ | ✅ |
 | 内存池 | 固定大小块分配器，O(1) 分配无碎片 | ✅ |
 | ~~邮箱 (Mailbox)~~ | ~~基于队列的单元素消息传递~~ | ✅ |
-| 移植到 Cortex-M0/M4/M7 | 扩展硬件支持 | 待实现 |
+| 移植到 Cortex-M0/M4/M7 | 扩展硬件支持 | ✅ |
 
 ---
 
@@ -2064,9 +2064,147 @@ Tickless 模式:
 
 ---
 
-## 25. TCB 扩展 — v0.2.0 新增
+## 25. 移植指南 (Cortex-M0/M4/M7) — v0.6.0 新增
 
-### 22.1 新增字段
+### 25.1 架构差异总览
+
+| 特性 | Cortex-M3 | Cortex-M0 | Cortex-M4 | Cortex-M7 |
+|------|----------|-----------|-----------|-----------|
+| 指令集 | Thumb-2 | Thumb | Thumb-2 | Thumb-2 |
+| FPU | 无 | 无 | 单精度 SP | 双精度 DP |
+| BASEPRI | ✅ | ❌ | ✅ | ✅ |
+| NVIC 优先级位 | 4 | 2 | 4 | 4 |
+| 代表芯片 | STM32F103 | STM32F030 | STM32F407 | STM32F746 |
+| 系统时钟 | 72 MHz | 48 MHz | 168 MHz | 216 MHz |
+
+### 25.2 各 Port 层关键差异
+
+#### Cortex-M0 (`port/cortex_m0/`)
+
+**无 BASEPRI**: M0 只有 PRIMASK 寄存器，无法实现基于 BASEPRI 的中断嵌套。`port_m0.c` 中只有 PRIMASK 版本的临界区代码，且通过 `#error` 阻止 `OS_CONFIG_USE_INTERRUPT_NESTING=1` 的编译。
+
+**PendSV_Handler**: M0 不支持 `stmdb` / `ldmia` 后递增的语法，需要用 `sub` + `stmia` 手动模拟。R8-R11 需要通过 R4-R7 中转保存。
+
+**NVIC 差异**: M0 只有 1 个 ISER/ICER 寄存器（支持 32 个中断），IP 寄存器只有 8 个。
+
+#### Cortex-M4 (`port/cortex_m4/`)
+
+**FPU 上下文**: PendSV_Handler 在保存/恢复 R4-R11 前后，通过 `tst r14, #0x10` 检查 EXC_RETURN 的 bit 4。如果为 0，表示任务使用了 FPU，需要额外保存/恢复 S16-S31（16 个 32 位寄存器 = 64 字节）。
+
+**FPU 使能**: `prv_fpu_enable()` 在 `os_kernel_init()` 中调用，设置 SCB.CPACR 的 CP10/CP11 为 full access。
+
+#### Cortex-M7 (`port/cortex_m7/`)
+
+**双精度 FPU**: M7 的 FPU 支持双精度浮点，D16-D31 是 16 个 64 位寄存器（32 个 32 位字）。PendSV 使用 `vstmdbeq r0!, {d16-d31}` / `vldmiaeq r0!, {d16-d31}` 保存/恢复，占用 32 word 栈空间（vs M4 的 16 word）。
+
+### 25.3 如何适配新芯片
+
+要将 MiniRTOS 移植到一个新的 Cortex-M 芯片，需要修改以下文件：
+
+1. **`port.c`**: 修改 `os_port_systick_init()` 中的时钟频率常量
+2. **`startup_*.s`**: 修改 `.cpu` 和 `.fpu` 指令、向量表中的中断列表
+3. **`*.ld`**: 修改 Flash/RAM 地址和大小
+4. **`os_config.h`**: 修改 `OS_CONFIG_NVIC_PRIO_BITS` 和 `OS_CONFIG_USE_INTERRUPT_NESTING`
+
+**步骤**:
+1. 复制最接近的 port 目录（如 `port/cortex_m4/`）
+2. 查阅芯片数据手册，确认时钟频率、Flash/RAM 大小、中断列表
+3. 修改上述 4 个文件
+4. 更新 Makefile 中的 `C_SOURCES`、`ASM_SOURCES`、`LDSCRIPT`、`CPU`、`FPU` 变量
+
+### 25.4 目录结构
+
+```
+port/
+├── port.c / port.h                  # Cortex-M3 (STM32F103, 72MHz)
+├── startup_stm32f103.s
+├── stm32f103.ld
+├── cortex_m0/
+│   ├── port_m0.c                    # Cortex-M0 (STM32F030, 48MHz, 无 FPU/BASEPRI)
+│   ├── startup_stm32f030.s
+│   └── stm32f030.ld
+├── cortex_m4/
+│   ├── port_m4.c                    # Cortex-M4 (STM32F407, 168MHz, 单精度 FPU)
+│   ├── startup_stm32f407.s
+│   └── stm32f407.ld
+└── cortex_m7/
+    ├── port_m7.c                    # Cortex-M7 (STM32F746, 216MHz, 双精度 FPU)
+    ├── startup_stm32f746.s
+    └── stm32f746.ld
+```
+
+---
+
+## 26. TCB 扩展 — v0.2.0 新增
+
+### 25.1 架构差异总览
+
+| 特性 | Cortex-M3 | Cortex-M0 | Cortex-M4 | Cortex-M7 |
+|------|----------|-----------|-----------|-----------|
+| 指令集 | Thumb-2 | Thumb | Thumb-2 | Thumb-2 |
+| FPU | 无 | 无 | 单精度 SP | 双精度 DP |
+| BASEPRI | ✅ | ❌ | ✅ | ✅ |
+| NVIC 优先级位 | 4 | 2 | 4 | 4 |
+| 代表芯片 | STM32F103 | STM32F030 | STM32F407 | STM32F746 |
+| 系统时钟 | 72 MHz | 48 MHz | 168 MHz | 216 MHz |
+
+### 25.2 各 Port 层关键差异
+
+#### Cortex-M0 (`port/cortex_m0/`)
+
+**无 BASEPRI**: M0 只有 PRIMASK 寄存器，无法实现基于 BASEPRI 的中断嵌套。`port_m0.c` 中只有 PRIMASK 版本的临界区代码，且通过 `#error` 阻止 `OS_CONFIG_USE_INTERRUPT_NESTING=1` 的编译。
+
+**PendSV_Handler**: M0 不支持 `stmdb` / `ldmia` 后递增的语法，需要用 `sub` + `stmia` 手动模拟。R8-R11 需要通过 R4-R7 中转保存。
+
+**NVIC 差异**: M0 只有 1 个 ISER/ICER 寄存器（支持 32 个中断），IP 寄存器只有 8 个。
+
+#### Cortex-M4 (`port/cortex_m4/`)
+
+**FPU 上下文**: PendSV_Handler 在保存/恢复 R4-R11 前后，通过 `tst r14, #0x10` 检查 EXC_RETURN 的 bit 4。如果为 0，表示任务使用了 FPU，需要额外保存/恢复 S16-S31（16 个 32 位寄存器 = 64 字节）。
+
+**FPU 使能**: `prv_fpu_enable()` 在 `os_kernel_init()` 中调用，设置 SCB.CPACR 的 CP10/CP11 为 full access。
+
+#### Cortex-M7 (`port/cortex_m7/`)
+
+**双精度 FPU**: M7 的 FPU 支持双精度浮点，D16-D31 是 16 个 64 位寄存器（32 个 32 位字）。PendSV 使用 `vstmdbeq r0!, {d16-d31}` / `vldmiaeq r0!, {d16-d31}` 保存/恢复，占用 32 word 栈空间（vs M4 的 16 word）。
+
+### 25.3 如何适配新芯片
+
+要将 MiniRTOS 移植到一个新的 Cortex-M 芯片，需要修改以下文件：
+
+1. **`port.c`**: 修改 `os_port_systick_init()` 中的时钟频率常量
+2. **`startup_*.s`**: 修改 `.cpu` 和 `.fpu` 指令、向量表中的中断列表
+3. **`*.ld`**: 修改 Flash/RAM 地址和大小
+4. **`os_config.h`**: 修改 `OS_CONFIG_NVIC_PRIO_BITS` 和 `OS_CONFIG_USE_INTERRUPT_NESTING`
+
+**步骤**:
+1. 复制最接近的 port 目录（如 `port/cortex_m4/`）
+2. 查阅芯片数据手册，确认时钟频率、Flash/RAM 大小、中断列表
+3. 修改上述 4 个文件
+4. 更新 Makefile 中的 `C_SOURCES`、`ASM_SOURCES`、`LDSCRIPT`、`CPU`、`FPU` 变量
+
+### 25.4 目录结构
+
+```
+port/
+├── port.c / port.h                  # Cortex-M3 (STM32F103, 72MHz)
+├── startup_stm32f103.s
+├── stm32f103.ld
+├── cortex_m0/
+│   ├── port_m0.c                    # Cortex-M0 (STM32F030, 48MHz, 无 FPU/BASEPRI)
+│   ├── startup_stm32f030.s
+│   └── stm32f030.ld
+├── cortex_m4/
+│   ├── port_m4.c                    # Cortex-M4 (STM32F407, 168MHz, 单精度 FPU)
+│   ├── startup_stm32f407.s
+│   └── stm32f407.ld
+└── cortex_m7/
+    ├── port_m7.c                    # Cortex-M7 (STM32F746, 216MHz, 双精度 FPU)
+    ├── startup_stm32f746.s
+    └── stm32f746.ld
+```
+
+### 26.1 新增字段
 
 为支持同步原语的阻塞/超时机制，TCB 新增以下字段：
 
@@ -2082,7 +2220,7 @@ uint32_t event_wait_options;
 uint32_t event_return_bits;
 ```
 
-### 22.2 阻塞原因枚举
+### 26.2 阻塞原因枚举
 
 ```c
 typedef enum {
@@ -2095,7 +2233,7 @@ typedef enum {
 } os_blocked_reason_t;
 ```
 
-### 22.3 超时处理流程
+### 26.3 超时处理流程
 
 1. 任务阻塞时设置 `blocked_on`、`blocked_reason`、`delay_ticks`
 2. `os_task_tick()` 递减 `delay_ticks`
