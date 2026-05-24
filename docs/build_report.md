@@ -7,7 +7,7 @@ MiniOS 是一个面向 ARM Cortex-M3 (STM32F103) 的轻量级嵌入式实时操�
 - **目标平台**: STM32F103C8T6 (Cortex-M3, 72MHz, 64KB Flash, 20KB RAM)
 - **语言**: C11 + ARM Assembly
 - **构建工具**: arm-none-eabi-gcc + Make
-- **版本**: v0.5.0 (新增邮箱、Tickless Idle)
+- **版本**: v0.6.0 (新增 Cortex-M0/M4/M7 移植层)
 
 ---
 
@@ -521,10 +521,13 @@ make flash
 | `kernel/sysinfo.c` | 系统信息查询 | sysinfo.h, task.h, kernel.h, heap4.h |
 | `kernel/trace.c` | Trace 日志 | trace.h, kernel.h, port.h |
 | `port/port.c` | Cortex-M3 移植层 | task.h, os_config.h |
+| `port/cortex_m0/port_m0.c` | Cortex-M0 移植层 | task.h, os_config.h |
+| `port/cortex_m4/port_m4.c` | Cortex-M4 移植层 (FPU) | task.h, os_config.h |
+| `port/cortex_m7/port_m7.c` | Cortex-M7 移植层 (双精度 FPU) | task.h, os_config.h |
 | `app/main.c` | 应用入口 | os.h |
-| `port/startup_stm32f103.s` | 启动汇编 | stm32f103.ld |
+| `port/startup_stm32f103.s` | 启动汇编 (M3) | stm32f103.ld |
 
-### 内存占用 (v0.5.0 实测)
+### 内存占用 (v0.6.0 实测)
 
 | 区域 | 大小 | 说明 |
 |------|------|------|
@@ -575,11 +578,11 @@ make flash
 2. ~~**IPC**: 消息队列 (Queue)~~ ✅ 已实现
 3. ~~**软件定时器**: 基于 tick 的回调定时器~~ ✅ 已实现
 4. ~~**邮箱 (Mailbox)**: 基于队列的单元素消息传递~~ ✅ 已实现 (v0.5.0)
-5. **中断管理**: 优先级分组、中断嵌套
+5. ~~**中断管理**: 优先级分组、中断嵌套~~ ✅ 已实现
 6. ~~**内存池**: 固定大小块分配器 (pool allocator)~~ ✅ 已实现
 7. ~~**调试工具**: 任务状态查看、运行时统计、Trace 支持~~ ✅ 已实现
 8. ~~**低功耗**: Tickless Idle 模式~~ ✅ 已实现 (v0.5.0)
-9. **移植**: 扩展到 Cortex-M0/M4/M7
+9. ~~**移植**: 扩展到 Cortex-M0/M4/M7~~ ✅ 已实现 (v0.6.0)
 
 ---
 
