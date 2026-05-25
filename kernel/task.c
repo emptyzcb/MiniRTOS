@@ -150,7 +150,9 @@ static void idle_task_func(void *param)
                 }
             }
         } else {
+#ifndef TEST_HOST_BUILD
             __asm volatile("wfi");
+#endif
         }
     }
 }

@@ -10,6 +10,7 @@
 #include "heap4.h"
 #include "os_config.h"
 #include <string.h>
+#include <stdint.h>
 
 /* ========== Internal Data ========== */
 
@@ -125,7 +126,7 @@ void os_heap_init(void)
     uint8_t *aligned_heap;
 
     /* Align the heap start address */
-    aligned_heap = (uint8_t*)ALIGN_UP((uint32_t)uc_heap);
+    aligned_heap = (uint8_t*)ALIGN_UP((uintptr_t)uc_heap);
 
     /* Initialize the first block spanning the entire heap */
     first_block = (os_block_header_t*)aligned_heap;

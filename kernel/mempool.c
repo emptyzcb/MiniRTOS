@@ -25,6 +25,7 @@
 #include "mempool.h"
 #include "os_config.h"
 #include <string.h>
+#include <stdint.h>
 
 #if OS_CONFIG_USE_MEMPOOL
 
@@ -65,7 +66,7 @@ os_status_t os_mempool_create(os_mempool_t *pool, void *buf,
     }
 
     /* Align the buffer start to pointer boundary */
-    aligned_buf = (uint8_t*)POOL_ALIGN_SIZE((uint32_t)buf);
+    aligned_buf = (uint8_t*)POOL_ALIGN_SIZE((uintptr_t)buf);
     if (aligned_buf < (uint8_t*)buf) {
         aligned_buf += sizeof(void*);
     }
