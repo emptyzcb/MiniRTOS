@@ -3,6 +3,23 @@
 #  Makefile for ARM Cortex-M3 (STM32F103)
 # ============================================================
 
+# Host OS helpers (Windows cmd.exe vs POSIX shell tools)
+ifeq ($(OS),Windows_NT)
+define MAKE_DIR
+if not exist "$(subst /,\\,$(1))" mkdir "$(subst /,\\,$(1))"
+endef
+define REMOVE_DIR
+if exist "$(subst /,\\,$(1))" (attrib -R /S /D "$(subst /,\\,$(1))\\*" 2>NUL & rmdir /S /Q "$(subst /,\\,$(1))")
+endef
+else
+define MAKE_DIR
+mkdir -p $(1)
+endef
+define REMOVE_DIR
+rm -rf $(1)
+endef
+endif
+
 # Toolchain
 PREFIX  = arm-none-eabi-
 CC      = $(PREFIX)gcc
@@ -92,12 +109,12 @@ all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET
 
 # Compile C sources
 $(BUILD_DIR)/%.o: %.c
-	@mkdir -p $(dir $@)
+	@$(call MAKE_DIR,$(dir $@))
 	$(CC) -c $(CFLAGS) $< -o $@
 
 # Assemble ASM sources
 $(BUILD_DIR)/%.o: %.s
-	@mkdir -p $(dir $@)
+	@$(call MAKE_DIR,$(dir $@))
 	$(AS) -c $(ASFLAGS) $< -o $@
 
 # Link
@@ -119,7 +136,7 @@ size: $(BUILD_DIR)/$(TARGET).elf
 
 # Clean build artifacts
 clean:
-	rm -rf $(BUILD_DIR)
+	@$(call REMOVE_DIR,$(BUILD_DIR))
 
 # Project info
 info:

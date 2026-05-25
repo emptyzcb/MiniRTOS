@@ -247,6 +247,9 @@ os_status_t os_mutex_unlock(os_mutex_t *mutex)
     /* Fully released: restore original priority */
     prv_restore_priority(mutex);
 
+    /* Clear ownership before transferring */
+    mutex->owner = NULL;
+
     /* Transfer ownership to highest-priority waiter, if any */
     woken_tcb = prv_wake_and_transfer(mutex);
 

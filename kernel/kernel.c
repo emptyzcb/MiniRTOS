@@ -140,6 +140,8 @@ void os_assert_failed(const char *file, uint32_t line)
 
     /* Halt */
     while (1) {
+#ifndef TEST_HOST_BUILD
         __asm volatile("bkpt #0");
+#endif
     }
 }
