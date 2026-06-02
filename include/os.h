@@ -70,6 +70,10 @@
 /* Delay the current task */
 #define OS_DELAY(ticks)         os_task_delay(ticks)
 
+/* Delay until the next absolute period boundary */
+#define OS_DELAY_UNTIL(previous_wake_tick, period_ticks) \
+    os_task_delay_until(previous_wake_tick, period_ticks)
+
 /* Delay in milliseconds */
 #define OS_DELAY_MS(ms)         os_task_delay((ms) * OS_CONFIG_TICK_RATE_HZ / 1000)
 

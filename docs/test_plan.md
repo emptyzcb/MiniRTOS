@@ -252,6 +252,7 @@ void test_suite_heap4(void) {
 | T-12 | `test_task_delay` | 延时阻塞 | delay_ticks 设置正确 |
 | T-13 | `test_task_create_suspended` | 创建挂起态任务 | 初始状态为 SUSPENDED |
 | T-14 | `test_task_ready_list_order` | 就绪链表优先级顺序 | 高优先级在前 |
+| T-15 | `test_task_delay_until_*` | 固定周期延时、超期跳过和参数校验 | 保持绝对周期相位 |
 
 ### 3.3 调度器测试 (`test_scheduler.c`)
 

@@ -1277,6 +1277,7 @@ PendSV_Handler:
 | `os_task_suspend()` | 挂起任务 | `os_status_t` |
 | `os_task_resume()` | 恢复任务 | `os_status_t` |
 | `os_task_delay()` | 延时 (tick) | `os_status_t` |
+| `os_task_delay_until()` | 延时到下一个绝对周期点，避免周期任务累积漂移 | `os_status_t` |
 | `os_task_set_priority()` | 修改优先级 | `os_status_t` |
 | `os_task_get_name()` | 获取任务名 | `const char*` |
 | `os_task_get_state()` | 获取任务状态 | `os_task_state_t` |
@@ -1302,6 +1303,7 @@ PendSV_Handler:
 | 宏 | 展开为 | 说明 |
 |----|--------|------|
 | `OS_DELAY(ticks)` | `os_task_delay(ticks)` | 延时 N tick |
+| `OS_DELAY_UNTIL(previous, period)` | `os_task_delay_until(previous, period)` | 延时到下一个绝对周期点 |
 | `OS_DELAY_MS(ms)` | `os_task_delay(ms * 1000 / HZ)` | 延时 N 毫秒 |
 | `OS_DELAY_SEC(sec)` | `os_task_delay(sec * HZ)` | 延时 N 秒 |
 | `OS_GET_TICK()` | `os_kernel_get_tick()` | 获取当前 tick |

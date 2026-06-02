@@ -115,6 +115,7 @@ os_status_t os_task_delete(handle);
 os_status_t os_task_suspend(handle);
 os_status_t os_task_resume(handle);
 os_status_t os_task_delay(ticks);
+os_status_t os_task_delay_until(previous_wake_tick, period_ticks);
 ```
 
 ### 3. 调度器 (`kernel/scheduler.c`)

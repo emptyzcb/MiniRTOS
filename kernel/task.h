@@ -77,6 +77,8 @@ os_status_t os_task_delete(os_task_handle_t handle);
 os_status_t os_task_suspend(os_task_handle_t handle);
 os_status_t os_task_resume(os_task_handle_t handle);
 os_status_t os_task_delay(os_tick_t ticks);
+os_status_t os_task_delay_until(os_tick_t *previous_wake_tick,
+                                os_tick_t period_ticks);
 os_status_t os_task_set_priority(os_task_handle_t handle, os_prio_t new_prio);
 const char* os_task_get_name(os_task_handle_t handle);
 

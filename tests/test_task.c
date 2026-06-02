@@ -152,6 +152,50 @@ TEST_CASE(test_task_create_suspended) {
     TEST_ASSERT_EQUAL(OS_TASK_SUSPENDED, os_task_get_state(h));
 }
 
+TEST_CASE(test_task_delay_until_blocks_until_next_period) {
+    task_test_setup();
+    os_stack_t stack[128];
+    os_task_handle_t h;
+    os_tick_t previous_wake_tick = os_kernel_get_tick();
+
+    os_task_create(dummy_task, "T1", NULL, 2, stack, sizeof(stack), &h);
+    os_task_set_current((os_tcb_t*)h);
+
+    os_status_t ret = os_task_delay_until(&previous_wake_tick, 10);
+
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(OS_TASK_BLOCKED, os_task_get_state(h));
+    TEST_ASSERT_EQUAL(10, ((os_tcb_t*)h)->delay_ticks);
+    TEST_ASSERT_EQUAL(os_kernel_get_tick() + 10, previous_wake_tick);
+}
+
+TEST_CASE(test_task_delay_until_skips_missed_period) {
+    task_test_setup();
+    os_stack_t stack[128];
+    os_task_handle_t h;
+    os_tick_t now = os_kernel_get_tick();
+    os_tick_t previous_wake_tick = now - 10;
+
+    os_task_create(dummy_task, "T1", NULL, 2, stack, sizeof(stack), &h);
+    os_task_set_current((os_tcb_t*)h);
+
+    os_status_t ret = os_task_delay_until(&previous_wake_tick, 5);
+
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(OS_TASK_READY, os_task_get_state(h));
+    TEST_ASSERT_EQUAL(now - 5, previous_wake_tick);
+}
+
+TEST_CASE(test_task_delay_until_param_errors) {
+    os_tick_t previous_wake_tick = os_kernel_get_tick();
+
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_task_delay_until(NULL, 1));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_task_delay_until(&previous_wake_tick, 0));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM,
+                      os_task_delay_until(&previous_wake_tick,
+                                          (os_tick_t)INT32_MAX + 1U));
+}
+
 void test_suite_task(void) {
     printf("\n=== Test Suite: Task Management ===\n");
     RUN_TEST(test_task_create);
@@ -166,6 +210,9 @@ void test_suite_task(void) {
     RUN_TEST(test_task_get_count);
     RUN_TEST(test_task_get_name);
     RUN_TEST(test_task_create_suspended);
+    RUN_TEST(test_task_delay_until_blocks_until_next_period);
+    RUN_TEST(test_task_delay_until_skips_missed_period);
+    RUN_TEST(test_task_delay_until_param_errors);
     printf("=== Results: %u/%u passed, %u failed ===\n",
            tests_passed, tests_run, tests_failed);
 }

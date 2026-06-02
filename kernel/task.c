@@ -501,6 +501,32 @@ os_status_t os_task_delay(os_tick_t ticks)
     return OS_OK;
 }
 
+os_status_t os_task_delay_until(os_tick_t *previous_wake_tick,
+                                os_tick_t period_ticks)
+{
+    os_tick_t next_wake_tick;
+    os_tick_t ticks_to_delay;
+
+    if (previous_wake_tick == NULL ||
+        period_ticks == 0 ||
+        period_ticks > INT32_MAX) {
+        return OS_ERR_PARAM;
+    }
+
+    next_wake_tick = *previous_wake_tick + period_ticks;
+    ticks_to_delay = next_wake_tick - os_kernel_get_tick();
+
+    /* Advance the absolute schedule even when the task missed its deadline. */
+    *previous_wake_tick = next_wake_tick;
+
+    /* Signed comparison keeps the result correct across tick counter wrap. */
+    if ((int32_t)ticks_to_delay > 0) {
+        return os_task_delay(ticks_to_delay);
+    }
+
+    return OS_OK;
+}
+
 os_status_t os_task_set_priority(os_task_handle_t handle, os_prio_t new_prio)
 {
     os_tcb_t *tcb = (os_tcb_t*)handle;
