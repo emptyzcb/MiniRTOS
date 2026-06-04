@@ -7,6 +7,8 @@
 
 #include "mailbox.h"
 #include "queue.h"
+#include "scheduler.h"
+#include <string.h>
 
 #if OS_CONFIG_USE_MAILBOX
 
@@ -36,6 +38,22 @@ os_status_t os_mailbox_send(os_mailbox_t *mb, const void *item,
     return os_queue_send(&mb->queue, item, timeout);
 }
 
+os_status_t os_mailbox_overwrite(os_mailbox_t *mb, const void *item)
+{
+    if (mb == NULL || item == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+    if (mb->queue.count == 0) {
+        os_sched_exit_critical();
+        return os_queue_send(&mb->queue, item, OS_WAIT_NONE);
+    }
+
+    memcpy(&mb->queue.buffer[mb->queue.head], item, mb->queue.item_size);
+    os_sched_exit_critical();
+
+    return OS_OK;
+}
+
 os_status_t os_mailbox_receive(os_mailbox_t *mb, void *item,
                                os_tick_t timeout)
 {
@@ -49,6 +67,22 @@ os_status_t os_mailbox_send_from_isr(os_mailbox_t *mb, const void *item)
     if (mb == NULL || item == NULL) return OS_ERR_PARAM;
 
     return os_queue_send_from_isr(&mb->queue, item);
+}
+
+os_status_t os_mailbox_overwrite_from_isr(os_mailbox_t *mb, const void *item)
+{
+    if (mb == NULL || item == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+    if (mb->queue.count == 0) {
+        os_sched_exit_critical();
+        return os_queue_send_from_isr(&mb->queue, item);
+    }
+
+    memcpy(&mb->queue.buffer[mb->queue.head], item, mb->queue.item_size);
+    os_sched_exit_critical();
+
+    return OS_OK;
 }
 
 os_status_t os_mailbox_receive_from_isr(os_mailbox_t *mb, void *item)

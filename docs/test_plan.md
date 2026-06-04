@@ -347,6 +347,7 @@ void test_suite_heap4(void) {
 | MB-03 | `test_mailbox_full` | 满时发送 | 行为正确 |
 | MB-04 | `test_mailbox_empty` | 空时接收 | 返回 OS_ERR_EMPTY |
 | MB-05 | `test_mailbox_overwrite` | 覆盖写入 | 旧数据被替换 |
+| MB-06 | `test_mailbox_overwrite_from_isr` | ISR 覆盖写入 | 旧数据被替换 |
 
 ### 3.11 任务通知测试 (`test_notify.c`)
 

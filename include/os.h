@@ -128,6 +128,7 @@
 /* Mailbox convenience macros */
 #if OS_CONFIG_USE_MAILBOX
 #define OS_MAILBOX_SEND(m, item, t)    os_mailbox_send(m, item, t)
+#define OS_MAILBOX_OVERWRITE(m, item)  os_mailbox_overwrite(m, item)
 #define OS_MAILBOX_RECEIVE(m, item, t) os_mailbox_receive(m, item, t)
 #endif
 

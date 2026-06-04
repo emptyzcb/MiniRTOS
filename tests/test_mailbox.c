@@ -84,17 +84,42 @@ TEST_CASE(test_mailbox_overwrite) {
     uint32_t v = 100;
     os_mailbox_send(&mb, &v, OS_WAIT_NONE);
 
-    /* Overwrite is not supported in this implementation (blocks on full).
-     * But we can test that the single-element semantics work correctly. */
-    uint32_t rx;
-    os_mailbox_receive(&mb, &rx, OS_WAIT_NONE);
-    TEST_ASSERT_EQUAL(100, rx);
-
-    /* Now send a new value */
     v = 200;
-    os_mailbox_send(&mb, &v, OS_WAIT_NONE);
-    os_mailbox_receive(&mb, &rx, OS_WAIT_NONE);
+    os_status_t ret = os_mailbox_overwrite(&mb, &v);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT(os_mailbox_is_full(&mb));
+
+    uint32_t rx;
+    ret = os_mailbox_receive(&mb, &rx, OS_WAIT_NONE);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
     TEST_ASSERT_EQUAL(200, rx);
+
+    v = 300;
+    ret = os_mailbox_overwrite(&mb, &v);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    os_mailbox_receive(&mb, &rx, OS_WAIT_NONE);
+    TEST_ASSERT_EQUAL(300, rx);
+
+    os_mailbox_delete(&mb);
+}
+
+TEST_CASE(test_mailbox_overwrite_from_isr) {
+    mb_test_setup();
+    os_mailbox_t mb;
+    os_mailbox_create(&mb, sizeof(uint32_t));
+
+    uint32_t v = 10;
+    os_status_t ret = os_mailbox_overwrite_from_isr(&mb, &v);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+
+    v = 20;
+    ret = os_mailbox_overwrite_from_isr(&mb, &v);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+
+    uint32_t rx = 0;
+    ret = os_mailbox_receive(&mb, &rx, OS_WAIT_NONE);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(20, rx);
 
     os_mailbox_delete(&mb);
 }
@@ -106,6 +131,10 @@ TEST_CASE(test_mailbox_param_errors) {
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mailbox_delete(NULL));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mailbox_send(NULL, &(int){1}, 0));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mailbox_send(&mb, NULL, 0));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mailbox_overwrite(NULL, &(int){1}));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mailbox_overwrite(&mb, NULL));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mailbox_overwrite_from_isr(NULL, &(int){1}));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mailbox_overwrite_from_isr(&mb, NULL));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mailbox_receive(NULL, &(int){1}, 0));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mailbox_receive(&mb, NULL, 0));
     TEST_ASSERT(os_mailbox_is_empty(NULL));
@@ -119,6 +148,7 @@ void test_suite_mailbox(void) {
     RUN_TEST(test_mailbox_full);
     RUN_TEST(test_mailbox_empty);
     RUN_TEST(test_mailbox_overwrite);
+    RUN_TEST(test_mailbox_overwrite_from_isr);
     RUN_TEST(test_mailbox_param_errors);
     printf("=== Results: %u/%u passed, %u failed ===\n",
            tests_passed, tests_run, tests_failed);

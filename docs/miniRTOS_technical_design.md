@@ -1963,8 +1963,10 @@ typedef struct os_mailbox {
 | `os_mailbox_create(mb, item_size)` | 创建邮箱 | `os_status_t` |
 | `os_mailbox_delete(mb)` | 删除邮箱 | `os_status_t` |
 | `os_mailbox_send(mb, item, timeout)` | 发送 (满时阻塞) | `os_status_t` |
+| `os_mailbox_overwrite(mb, item)` | 覆盖写入 (满时替换旧值) | `os_status_t` |
 | `os_mailbox_receive(mb, item, timeout)` | 接收 (空时阻塞) | `os_status_t` |
 | `os_mailbox_send_from_isr(mb, item)` | 发送 (ISR 安全) | `os_status_t` |
+| `os_mailbox_overwrite_from_isr(mb, item)` | 覆盖写入 (ISR 安全) | `os_status_t` |
 | `os_mailbox_receive_from_isr(mb, item)` | 接收 (ISR 安全) | `os_status_t` |
 | `os_mailbox_is_empty(mb)` | 是否为空 | `bool` |
 | `os_mailbox_is_full(mb)` | 是否已满 | `bool` |
