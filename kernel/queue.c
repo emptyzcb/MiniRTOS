@@ -162,6 +162,26 @@ os_status_t os_queue_delete(os_queue_t *queue)
     return OS_OK;
 }
 
+os_status_t os_queue_reset(os_queue_t *queue)
+{
+    if (queue == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+
+    if (queue->send_wait_list != NULL || queue->recv_wait_list != NULL) {
+        os_sched_exit_critical();
+        return OS_ERR_STATE;
+    }
+
+    queue->count = 0;
+    queue->head = 0;
+    queue->tail = 0;
+
+    os_sched_exit_critical();
+
+    return OS_OK;
+}
+
 os_status_t os_queue_send(os_queue_t *queue, const void *item,
                           os_tick_t timeout)
 {
@@ -248,6 +268,46 @@ os_status_t os_queue_send_from_isr(os_queue_t *queue, const void *item)
 
     os_sched_exit_critical();
     return OS_ERR_FULL;
+}
+
+os_status_t os_queue_overwrite(os_queue_t *queue, const void *item)
+{
+    os_tcb_t *woken_tcb = NULL;
+
+    if (queue == NULL || item == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+
+    if (queue->max_items != 1) {
+        os_sched_exit_critical();
+        return OS_ERR_STATE;
+    }
+
+    if (queue->count == 0) {
+        memcpy(&queue->buffer[queue->tail], item, queue->item_size);
+        queue->tail = (queue->tail + queue->item_size) % queue->buf_size;
+        queue->count = 1;
+
+        woken_tcb = prv_wake_task(&queue->recv_wait_list);
+    } else {
+        memcpy(&queue->buffer[queue->head], item, queue->item_size);
+    }
+
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_QUEUE_SEND, (uint32_t)queue, queue->count);
+#endif
+
+    os_sched_exit_critical();
+
+    if (woken_tcb != NULL) {
+        os_tcb_t *cur = (os_tcb_t*)os_task_get_current();
+        if (cur != NULL && woken_tcb->priority < cur->priority &&
+            cur->state == OS_TASK_RUNNING) {
+            os_sched_yield();
+        }
+    }
+
+    return OS_OK;
 }
 
 os_status_t os_queue_receive(os_queue_t *queue, void *item,
@@ -357,6 +417,19 @@ uint32_t os_queue_get_count(os_queue_t *queue)
 {
     if (queue == NULL) return 0;
     return queue->count;
+}
+
+uint32_t os_queue_get_count_from_isr(os_queue_t *queue)
+{
+    uint32_t count;
+
+    if (queue == NULL) return 0;
+
+    os_sched_enter_critical();
+    count = queue->count;
+    os_sched_exit_critical();
+
+    return count;
 }
 
 uint32_t os_queue_get_spaces(os_queue_t *queue)

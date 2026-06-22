@@ -1321,12 +1321,15 @@ PendSV_Handler:
 |------|------|--------|
 | `os_queue_create(queue, item_size, max_items)` | 创建队列 | `os_status_t` |
 | `os_queue_delete(queue)` | 删除队列 | `os_status_t` |
+| `os_queue_reset(queue)` | 清空队列内容 | `os_status_t` |
 | `os_queue_send(queue, item, timeout)` | 发送 (阻塞) | `os_status_t` |
 | `os_queue_send_from_isr(queue, item)` | 发送 (ISR 安全) | `os_status_t` |
+| `os_queue_overwrite(queue, item)` | 覆盖写入 (仅容量为 1) | `os_status_t` |
 | `os_queue_receive(queue, item, timeout)` | 接收 (阻塞) | `os_status_t` |
 | `os_queue_receive_from_isr(queue, item)` | 接收 (ISR 安全) | `os_status_t` |
 | `os_queue_peek(queue, item)` | 查看不取出 | `os_status_t` |
 | `os_queue_get_count(queue)` | 获取元素数 | `uint32_t` |
+| `os_queue_get_count_from_isr(queue)` | ISR 中获取元素数 | `uint32_t` |
 | `os_queue_get_spaces(queue)` | 获取剩余空间 | `uint32_t` |
 | `os_queue_is_empty(queue)` | 是否为空 | `bool` |
 | `os_queue_is_full(queue)` | 是否已满 | `bool` |
@@ -1383,6 +1386,9 @@ PendSV_Handler:
 |----|--------|------|
 | `OS_QUEUE_SEND(q, item, t)` | `os_queue_send(q, item, t)` | 队列发送 |
 | `OS_QUEUE_RECEIVE(q, item, t)` | `os_queue_receive(q, item, t)` | 队列接收 |
+| `OS_QUEUE_RESET(q)` | `os_queue_reset(q)` | 清空队列 |
+| `OS_QUEUE_OVERWRITE(q, item)` | `os_queue_overwrite(q, item)` | 单元素队列覆盖写入 |
+| `OS_QUEUE_COUNT_FROM_ISR(q)` | `os_queue_get_count_from_isr(q)` | ISR 中读取队列元素数 |
 | `OS_SEM_GIVE(s)` | `os_sem_give(s)` | 信号量释放 |
 | `OS_SEM_TAKE(s, t)` | `os_sem_take(s, t)` | 信号量获取 |
 | `OS_MUTEX_LOCK(m, t)` | `os_mutex_lock(m, t)` | 互斥锁加锁 |

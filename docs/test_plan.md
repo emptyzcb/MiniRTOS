@@ -278,6 +278,10 @@ void test_suite_heap4(void) {
 | Q-09 | `test_queue_delete` | 删除队列 | 资源释放 |
 | Q-10 | `test_queue_item_size_4` | 4 字节元素 | 数据完整 |
 | Q-11 | `test_queue_item_size_64` | 64 字节元素 | 数据完整 |
+| Q-12 | `test_queue_reset` | 清空队列 | count 归零且不可再读旧数据 |
+| Q-13 | `test_queue_overwrite` | 单元素队列覆盖写入 | 只保留最新数据 |
+| Q-14 | `test_queue_overwrite_rejects_multi_item_queue` | 多元素队列覆盖写入 | 返回 OS_ERR_STATE |
+| Q-15 | `test_queue_get_count_from_isr` | ISR 计数读取 | 返回当前元素数 |
 
 ### 3.5 信号量测试 (`test_semaphore.c`)
 

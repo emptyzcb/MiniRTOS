@@ -215,11 +215,14 @@ typedef struct os_queue {
 ```c
 os_queue_create(queue, item_size, max_items);
 os_queue_delete(queue);
+os_queue_reset(queue);                        // 清空队列
 os_queue_send(queue, item, timeout);         // 阻塞发送
 os_queue_send_from_isr(queue, item);         // ISR 安全发送
+os_queue_overwrite(queue, item);             // 单元素队列覆盖写入
 os_queue_receive(queue, item, timeout);      // 阻塞接收
 os_queue_receive_from_isr(queue, item);      // ISR 安全接收
 os_queue_peek(queue, item);                  // 非阻塞查看
+os_queue_get_count_from_isr(queue);          // ISR 安全读取元素数
 os_queue_get_count/get_spaces/is_empty/is_full(queue);
 ```
 

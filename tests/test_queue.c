@@ -130,6 +130,83 @@ TEST_CASE(test_queue_count_spaces) {
     os_queue_delete(&q);
 }
 
+TEST_CASE(test_queue_reset) {
+    queue_test_setup();
+    os_queue_t q;
+    os_queue_create(&q, sizeof(uint32_t), 3);
+
+    uint32_t v = 1;
+    os_queue_send(&q, &v, OS_WAIT_NONE);
+    v = 2;
+    os_queue_send(&q, &v, OS_WAIT_NONE);
+
+    os_status_t ret = os_queue_reset(&q);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(0, os_queue_get_count(&q));
+    TEST_ASSERT_EQUAL(3, os_queue_get_spaces(&q));
+    TEST_ASSERT_TRUE(os_queue_is_empty(&q));
+
+    uint32_t rx = 0;
+    ret = os_queue_receive(&q, &rx, OS_WAIT_NONE);
+    TEST_ASSERT_EQUAL(OS_ERR_EMPTY, ret);
+
+    os_queue_delete(&q);
+}
+
+TEST_CASE(test_queue_overwrite) {
+    queue_test_setup();
+    os_queue_t q;
+    os_queue_create(&q, sizeof(uint32_t), 1);
+
+    uint32_t v = 1;
+    os_queue_send(&q, &v, OS_WAIT_NONE);
+    v = 2;
+    os_status_t ret = os_queue_overwrite(&q, &v);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(1, os_queue_get_count(&q));
+
+    uint32_t rx = 0;
+    ret = os_queue_receive(&q, &rx, OS_WAIT_NONE);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(2, rx);
+
+    v = 3;
+    ret = os_queue_overwrite(&q, &v);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    ret = os_queue_receive(&q, &rx, OS_WAIT_NONE);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(3, rx);
+
+    os_queue_delete(&q);
+}
+
+TEST_CASE(test_queue_overwrite_rejects_multi_item_queue) {
+    queue_test_setup();
+    os_queue_t q;
+    os_queue_create(&q, sizeof(uint32_t), 2);
+
+    uint32_t v = 1;
+    os_status_t ret = os_queue_overwrite(&q, &v);
+    TEST_ASSERT_EQUAL(OS_ERR_STATE, ret);
+
+    os_queue_delete(&q);
+}
+
+TEST_CASE(test_queue_get_count_from_isr) {
+    queue_test_setup();
+    os_queue_t q;
+    os_queue_create(&q, sizeof(uint32_t), 3);
+
+    uint32_t v = 1;
+    os_queue_send(&q, &v, OS_WAIT_NONE);
+    v = 2;
+    os_queue_send(&q, &v, OS_WAIT_NONE);
+
+    TEST_ASSERT_EQUAL(2, os_queue_get_count_from_isr(&q));
+
+    os_queue_delete(&q);
+}
+
 TEST_CASE(test_queue_wraparound) {
     queue_test_setup();
     os_queue_t q;
@@ -204,6 +281,10 @@ TEST_CASE(test_queue_param_errors) {
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_queue_create(&q, 4, 0));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_queue_send(NULL, &(int){1}, OS_WAIT_NONE));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_queue_receive(NULL, &(int){1}, OS_WAIT_NONE));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_queue_reset(NULL));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_queue_overwrite(NULL, &(int){1}));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_queue_overwrite(&q, NULL));
+    TEST_ASSERT_EQUAL(0, os_queue_get_count_from_isr(NULL));
 }
 
 void test_suite_queue(void) {
@@ -215,6 +296,10 @@ void test_suite_queue(void) {
     RUN_TEST(test_queue_fifo_order);
     RUN_TEST(test_queue_peek);
     RUN_TEST(test_queue_count_spaces);
+    RUN_TEST(test_queue_reset);
+    RUN_TEST(test_queue_overwrite);
+    RUN_TEST(test_queue_overwrite_rejects_multi_item_queue);
+    RUN_TEST(test_queue_get_count_from_isr);
     RUN_TEST(test_queue_wraparound);
     RUN_TEST(test_queue_delete);
     RUN_TEST(test_queue_item_size_4);

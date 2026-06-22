@@ -30,10 +30,12 @@ typedef struct os_queue {
 os_status_t os_queue_create(os_queue_t *queue, uint32_t item_size,
                             uint32_t max_items);
 os_status_t os_queue_delete(os_queue_t *queue);
+os_status_t os_queue_reset(os_queue_t *queue);
 
 os_status_t os_queue_send(os_queue_t *queue, const void *item,
                           os_tick_t timeout);
 os_status_t os_queue_send_from_isr(os_queue_t *queue, const void *item);
+os_status_t os_queue_overwrite(os_queue_t *queue, const void *item);
 
 os_status_t os_queue_receive(os_queue_t *queue, void *item,
                              os_tick_t timeout);
@@ -42,6 +44,7 @@ os_status_t os_queue_receive_from_isr(os_queue_t *queue, void *item);
 os_status_t os_queue_peek(os_queue_t *queue, void *item);
 
 uint32_t os_queue_get_count(os_queue_t *queue);
+uint32_t os_queue_get_count_from_isr(os_queue_t *queue);
 uint32_t os_queue_get_spaces(os_queue_t *queue);
 bool os_queue_is_empty(os_queue_t *queue);
 bool os_queue_is_full(os_queue_t *queue);
