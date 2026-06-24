@@ -219,6 +219,7 @@ os_queue_reset(queue);                        // 清空队列
 os_queue_send(queue, item, timeout);         // 阻塞发送
 os_queue_send_from_isr(queue, item);         // ISR 安全发送
 os_queue_overwrite(queue, item);             // 单元素队列覆盖写入
+os_queue_overwrite_from_isr(queue, item);    // ISR 安全覆盖写入
 os_queue_receive(queue, item, timeout);      // 阻塞接收
 os_queue_receive_from_isr(queue, item);      // ISR 安全接收
 os_queue_peek(queue, item);                  // 非阻塞查看

@@ -1325,6 +1325,7 @@ PendSV_Handler:
 | `os_queue_send(queue, item, timeout)` | 发送 (阻塞) | `os_status_t` |
 | `os_queue_send_from_isr(queue, item)` | 发送 (ISR 安全) | `os_status_t` |
 | `os_queue_overwrite(queue, item)` | 覆盖写入 (仅容量为 1) | `os_status_t` |
+| `os_queue_overwrite_from_isr(queue, item)` | 覆盖写入 (ISR 安全，仅容量为 1) | `os_status_t` |
 | `os_queue_receive(queue, item, timeout)` | 接收 (阻塞) | `os_status_t` |
 | `os_queue_receive_from_isr(queue, item)` | 接收 (ISR 安全) | `os_status_t` |
 | `os_queue_peek(queue, item)` | 查看不取出 | `os_status_t` |
@@ -1388,6 +1389,7 @@ PendSV_Handler:
 | `OS_QUEUE_RECEIVE(q, item, t)` | `os_queue_receive(q, item, t)` | 队列接收 |
 | `OS_QUEUE_RESET(q)` | `os_queue_reset(q)` | 清空队列 |
 | `OS_QUEUE_OVERWRITE(q, item)` | `os_queue_overwrite(q, item)` | 单元素队列覆盖写入 |
+| `OS_QUEUE_OVERWRITE_FROM_ISR(q, item)` | `os_queue_overwrite_from_isr(q, item)` | ISR 中单元素队列覆盖写入 |
 | `OS_QUEUE_COUNT_FROM_ISR(q)` | `os_queue_get_count_from_isr(q)` | ISR 中读取队列元素数 |
 | `OS_SEM_GIVE(s)` | `os_sem_give(s)` | 信号量释放 |
 | `OS_SEM_TAKE(s, t)` | `os_sem_take(s, t)` | 信号量获取 |

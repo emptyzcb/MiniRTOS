@@ -36,6 +36,7 @@ os_status_t os_queue_send(os_queue_t *queue, const void *item,
                           os_tick_t timeout);
 os_status_t os_queue_send_from_isr(os_queue_t *queue, const void *item);
 os_status_t os_queue_overwrite(os_queue_t *queue, const void *item);
+os_status_t os_queue_overwrite_from_isr(os_queue_t *queue, const void *item);
 
 os_status_t os_queue_receive(os_queue_t *queue, void *item,
                              os_tick_t timeout);

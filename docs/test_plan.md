@@ -282,6 +282,7 @@ void test_suite_heap4(void) {
 | Q-13 | `test_queue_overwrite` | 单元素队列覆盖写入 | 只保留最新数据 |
 | Q-14 | `test_queue_overwrite_rejects_multi_item_queue` | 多元素队列覆盖写入 | 返回 OS_ERR_STATE |
 | Q-15 | `test_queue_get_count_from_isr` | ISR 计数读取 | 返回当前元素数 |
+| Q-16 | `test_queue_overwrite_from_isr` | ISR 覆盖写入 | 只保留最新数据 |
 
 ### 3.5 信号量测试 (`test_semaphore.c`)
 

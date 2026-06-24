@@ -310,6 +310,42 @@ os_status_t os_queue_overwrite(os_queue_t *queue, const void *item)
     return OS_OK;
 }
 
+os_status_t os_queue_overwrite_from_isr(os_queue_t *queue, const void *item)
+{
+    os_tcb_t *woken_tcb = NULL;
+
+    if (queue == NULL || item == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+
+    if (queue->max_items != 1) {
+        os_sched_exit_critical();
+        return OS_ERR_STATE;
+    }
+
+    if (queue->count == 0) {
+        memcpy(&queue->buffer[queue->tail], item, queue->item_size);
+        queue->tail = (queue->tail + queue->item_size) % queue->buf_size;
+        queue->count = 1;
+
+        woken_tcb = prv_wake_task(&queue->recv_wait_list);
+    } else {
+        memcpy(&queue->buffer[queue->head], item, queue->item_size);
+    }
+
+#if OS_CONFIG_USE_TRACE
+    os_trace_record(OS_TRACE_QUEUE_SEND, (uint32_t)queue, queue->count);
+#endif
+
+    os_sched_exit_critical();
+
+    if (woken_tcb != NULL) {
+        os_sched_request_switch_from_isr();
+    }
+
+    return OS_OK;
+}
+
 os_status_t os_queue_receive(os_queue_t *queue, void *item,
                              os_tick_t timeout)
 {

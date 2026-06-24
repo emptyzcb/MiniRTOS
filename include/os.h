@@ -113,6 +113,7 @@
 #define OS_QUEUE_RECEIVE(q, item, t)    os_queue_receive(q, item, t)
 #define OS_QUEUE_RESET(q)               os_queue_reset(q)
 #define OS_QUEUE_OVERWRITE(q, item)     os_queue_overwrite(q, item)
+#define OS_QUEUE_OVERWRITE_FROM_ISR(q, item) os_queue_overwrite_from_isr(q, item)
 #define OS_QUEUE_COUNT_FROM_ISR(q)      os_queue_get_count_from_isr(q)
 #endif
 
