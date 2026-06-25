@@ -1,4 +1,4 @@
-#ifndef OS_KERNEL_H
+﻿#ifndef OS_KERNEL_H
 #define OS_KERNEL_H
 
 #include "os_types.h"
@@ -36,4 +36,20 @@ const char* os_kernel_get_version(void);
  */
 void os_assert_failed(const char *file, uint32_t line);
 
-#endif /* OS_KERNEL_H */
+
+/* ========== Tick Hook ========== */
+
+/*
+ * Tick hook function type. Called on every system tick from ISR context.
+ * Keep tick hooks short and non-blocking.
+ */
+typedef void (*os_tick_hook_t)(void);
+
+/*
+ * Register a tick hook. Multiple hooks can be registered.
+ * Returns OS_OK on success, OS_ERR_FULL if no more slots.
+ */
+os_status_t os_kernel_register_tick_hook(os_tick_hook_t hook);
+os_status_t os_kernel_unregister_tick_hook(os_tick_hook_t hook);
+
+

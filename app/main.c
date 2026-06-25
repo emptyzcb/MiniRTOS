@@ -1,5 +1,5 @@
-/*
- * main.c - MiniOS Demo Application (v0.5.0)
+﻿/*
+ * main.c - MiniOS Demo Application (v0.6.0)
  *
  * Demonstrates all OS features:
  *   - Task creation with different priorities
@@ -25,6 +25,11 @@
 /* ========== Shared Resources ========== */
 
 static uint32_t shared_counter = 0;
+
+/* ========== Hook Demo State ========== */
+static volatile uint32_t malloc_fail_count = 0;
+static volatile uint32_t tick_hook_count = 0;
+static volatile uint32_t overflow_detected = 0;
 
 /* Queue: 10 items of uint32_t */
 static os_queue_t demo_queue;
@@ -203,12 +208,43 @@ static void monitor_task(void *param)
         (void)heartbeat_count;
         (void)shared_counter;
         (void)idle_tick_count;
+        (void)malloc_fail_count;
+        (void)tick_hook_count;
+        (void)overflow_detected;
 
         OS_DELAY_SEC(3);
     }
 }
 
-/* ========== Main ========== */
+
+/* ========== Hook Callbacks ========== */
+
+static void my_malloc_failed_hook(uint32_t size)
+{
+    malloc_fail_count++;
+    (void)size;
+    /* In production: log error, maybe reset after N failures */
+}
+
+static void my_stack_overflow_hook(os_task_handle_t handle, const char *name)
+{
+    overflow_detected = 1;
+    (void)handle;
+    (void)name;
+    /* In production: log diagnostic info, then software reset */
+    os_port_debug_print("STACK OVERFLOW: ");
+    os_port_debug_print(name);
+    os_port_debug_print("\r\n");
+
+    /* Simulate a safe reset after overflow */
+    while (1) { __asm volatile("wfi"); }
+}
+
+static void my_tick_hook(void)
+{
+    tick_hook_count++;
+}
+
 
 int main(void)
 {
@@ -217,6 +253,11 @@ int main(void)
 
     /* Register an idle hook */
     os_task_register_idle_hook(my_idle_hook);
+
+    /* Register system hooks */
+    os_heap_set_malloc_failed_hook(my_malloc_failed_hook);
+    os_task_set_stack_overflow_hook(my_stack_overflow_hook);
+    os_kernel_register_tick_hook(my_tick_hook);
 
     /* Create synchronization objects */
     os_queue_create(&demo_queue, sizeof(uint32_t), 10);

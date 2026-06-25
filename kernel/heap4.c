@@ -1,4 +1,4 @@
-/*
+﻿/*
  * heap4.c - Heap-4 Coalescing Block Allocator
  *
  * Based on the FreeRTOS heap_4 algorithm:
@@ -27,6 +27,9 @@ static os_block_header_t *px_block_list = NULL;
 static uint32_t free_bytes_remaining   = 0;
 static uint32_t min_free_bytes_ever    = 0;
 static uint32_t heap_initialized       = 0;
+
+/* Hook */
+static os_malloc_failed_hook_t malloc_failed_hook = NULL;
 
 /* Macro: get pointer just past the header */
 #define BLOCK_DATA(hdr)  ((void*)((uint8_t*)(hdr) + sizeof(os_block_header_t)))
@@ -160,6 +163,10 @@ void* os_heap_alloc(uint32_t size)
     }
 
     if (block == NULL) {
+        /* Call malloc failed hook */
+        if (malloc_failed_hook != NULL) {
+            malloc_failed_hook(size);
+        }
         return NULL; /* No suitable block found */
     }
 
@@ -307,4 +314,11 @@ uint32_t os_heap_get_largest_free_block(void)
 uint32_t os_heap_get_min_free_size(void)
 {
     return min_free_bytes_ever;
+}
+
+/* ========== Hook ========== */
+
+void os_heap_set_malloc_failed_hook(os_malloc_failed_hook_t hook)
+{
+    malloc_failed_hook = hook;
 }

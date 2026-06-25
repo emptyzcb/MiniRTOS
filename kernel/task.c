@@ -1,4 +1,4 @@
-/*
+﻿/*
  * task.c - Task Management
  *
  * Implements task creation, deletion, and the ready list.
@@ -49,6 +49,9 @@ static uint32_t task_count = 0;
 /* Idle hooks */
 static os_idle_hook_t idle_hooks[OS_CONFIG_MAX_IDLE_HOOKS];
 static uint32_t idle_hook_count = 0;
+
+/* Stack overflow hook */
+static os_stack_overflow_hook_t stack_overflow_hook = NULL;
 
 /* Currently running task - defined in port.c for assembly access */
 extern os_tcb_t *current_task_ptr;
@@ -767,4 +770,10 @@ os_status_t os_task_unregister_idle_hook(os_idle_hook_t hook)
 
     os_sched_exit_critical();
     return OS_ERR_PARAM;
+
+/* ========== Stack Overflow Hook ========== */
+
+void os_task_set_stack_overflow_hook(os_stack_overflow_hook_t hook)
+{
+    stack_overflow_hook = hook;
 }

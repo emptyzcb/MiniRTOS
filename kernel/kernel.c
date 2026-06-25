@@ -1,4 +1,4 @@
-/*
+﻿/*
  * kernel.c - OS Kernel Core
  *
  * Initializes all kernel subsystems and manages the system tick.
@@ -28,12 +28,17 @@
 #include "trace.h"
 #endif
 
-#define OS_VERSION "MiniOS v0.5.0"
+#define OS_VERSION "MiniOS v0.6.0"
 
 /* ========== Internal Data ========== */
 
 static os_tick_t system_tick = 0;
 static bool kernel_initialized = false;
+
+#define OS_CONFIG_MAX_TICK_HOOKS 4
+
+static os_tick_hook_t tick_hooks[OS_CONFIG_MAX_TICK_HOOKS];
+static uint32_t tick_hook_count = 0;
 
 /* ========== Public API ========== */
 
@@ -100,6 +105,13 @@ void os_kernel_tick_increment(void)
 {
     system_tick++;
 
+    /* Call registered tick hooks */
+    for (uint32_t i = 0; i < tick_hook_count; i++) {
+        if (tick_hooks[i] != NULL) {
+            tick_hooks[i]();
+        }
+    }
+
     /* Process task delays */
     os_task_tick();
 
@@ -144,4 +156,52 @@ void os_assert_failed(const char *file, uint32_t line)
         __asm volatile("bkpt #0");
 #endif
     }
+}
+
+/* ========== Tick Hook ========== */
+
+os_status_t os_kernel_register_tick_hook(os_tick_hook_t hook)
+{
+    if (hook == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+
+    if (tick_hook_count >= OS_CONFIG_MAX_TICK_HOOKS) {
+        os_sched_exit_critical();
+        return OS_ERR_FULL;
+    }
+
+    /* Check for duplicate */
+    for (uint32_t i = 0; i < tick_hook_count; i++) {
+        if (tick_hooks[i] == hook) {
+            os_sched_exit_critical();
+            return OS_ERR_STATE;
+        }
+    }
+
+    tick_hooks[tick_hook_count++] = hook;
+    os_sched_exit_critical();
+    return OS_OK;
+}
+
+os_status_t os_kernel_unregister_tick_hook(os_tick_hook_t hook)
+{
+    if (hook == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+
+    for (uint32_t i = 0; i < tick_hook_count; i++) {
+        if (tick_hooks[i] == hook) {
+            for (uint32_t j = i; j < tick_hook_count - 1; j++) {
+                tick_hooks[j] = tick_hooks[j + 1];
+            }
+            tick_hook_count--;
+            tick_hooks[tick_hook_count] = NULL;
+            os_sched_exit_critical();
+            return OS_OK;
+        }
+    }
+
+    os_sched_exit_critical();
+    return OS_ERR_PARAM;
 }

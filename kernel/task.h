@@ -1,4 +1,4 @@
-#ifndef OS_TASK_H
+﻿#ifndef OS_TASK_H
 #define OS_TASK_H
 
 #include "os_types.h"
@@ -121,4 +121,12 @@ os_status_t os_task_unregister_idle_hook(os_idle_hook_t hook);
 /* Task table iterator */
 os_task_handle_t os_task_get_by_index(uint32_t index);
 
-#endif /* OS_TASK_H */
+
+/* ========== Stack Overflow Hook ========== */
+
+/* Called when stack overflow is detected. If not set, os_assert_failed is used. */
+typedef void (*os_stack_overflow_hook_t)(os_task_handle_t handle, const char *task_name);
+
+void os_task_set_stack_overflow_hook(os_stack_overflow_hook_t hook);
+
+
