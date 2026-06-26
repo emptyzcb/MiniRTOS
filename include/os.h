@@ -1,4 +1,4 @@
-/*
+﻿/*
  * os.h - MiniOS Public API
  *
  * Single header to include for application code.
@@ -136,4 +136,12 @@
 #define OS_MAILBOX_RECEIVE(m, item, t) os_mailbox_receive(m, item, t)
 #endif
 
-#endif /* OS_H */
+/* Timer ISR convenience macros */
+#if OS_CONFIG_USE_SOFTWARE_TIMERS
+#define OS_TIMER_START_FROM_ISR(t)       os_timer_start_from_isr(t)
+#define OS_TIMER_STOP_FROM_ISR(t)        os_timer_stop_from_isr(t)
+#define OS_TIMER_RESET_FROM_ISR(t)       os_timer_reset_from_isr(t)
+#define OS_TIMER_CHANGE_PERIOD_FROM_ISR(t, p) os_timer_change_period_from_isr(t, p)
+#endif
+
+

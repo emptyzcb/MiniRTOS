@@ -1,4 +1,4 @@
-/*
+﻿/*
  * timer.c - Software Timer Implementation
  *
  * Callback-based timers driven by the system tick.
@@ -281,6 +281,80 @@ bool os_timer_is_active(os_timer_t *timer)
     if (timer == NULL) return false;
     return timer->active;
 }
+
+/* ========== ISR-Safe Timer API ========== */
+
+os_status_t os_timer_start_from_isr(os_timer_t *timer)
+{
+    if (timer == NULL) return OS_ERR_PARAM;
+
+    uint32_t mask = os_port_enter_critical();
+
+    if (timer->active) {
+        prv_timer_remove_from_active(timer);
+    }
+
+    timer->remaining = timer->period;
+    timer->active = true;
+    prv_timer_insert_sorted(timer);
+
+    os_port_exit_critical(mask);
+
+    return OS_OK;
+}
+
+os_status_t os_timer_stop_from_isr(os_timer_t *timer)
+{
+    if (timer == NULL) return OS_ERR_PARAM;
+
+    uint32_t mask = os_port_enter_critical();
+
+    if (timer->active) {
+        prv_timer_remove_from_active(timer);
+        timer->active = false;
+    }
+
+    os_port_exit_critical(mask);
+
+    return OS_OK;
+}
+
+os_status_t os_timer_reset_from_isr(os_timer_t *timer)
+{
+    if (timer == NULL) return OS_ERR_PARAM;
+
+    uint32_t mask = os_port_enter_critical();
+
+    if (timer->active) {
+        prv_timer_remove_from_active(timer);
+        timer->remaining = timer->period;
+        prv_timer_insert_sorted(timer);
+    }
+
+    os_port_exit_critical(mask);
+
+    return OS_OK;
+}
+
+os_status_t os_timer_change_period_from_isr(os_timer_t *timer, os_tick_t new_period)
+{
+    if (timer == NULL || new_period == 0) return OS_ERR_PARAM;
+
+    uint32_t mask = os_port_enter_critical();
+
+    timer->period = new_period;
+
+    if (timer->active) {
+        prv_timer_remove_from_active(timer);
+        timer->remaining = new_period;
+        prv_timer_insert_sorted(timer);
+    }
+
+    os_port_exit_critical(mask);
+
+    return OS_OK;
+}
+
 
 void os_timer_tick(void)
 {

@@ -1,5 +1,5 @@
 ﻿/*
- * main.c - MiniOS Demo Application (v0.6.0)
+ * main.c - MiniOS Demo Application (v0.7.0)
  *
  * Demonstrates all OS features:
  *   - Task creation with different priorities
@@ -58,6 +58,31 @@ static os_task_handle_t consumer_task_handle;
 
 /* Mailbox: single-element signaling */
 static os_mailbox_t alarm_mailbox;
+
+/* ========== ISR-Safe Timer Example ==========
+ *
+ * The _from_isr variants allow timer operations inside interrupt handlers.
+ * Example: A UART RX ISR could restart a communication timeout timer:
+ *
+ *   void USART1_IRQHandler(void)
+ *   {
+ *       os_timer_reset_from_isr(&uart_timeout_timer);
+ *   }
+ *
+ * Or a GPIO EXTI ISR could stop and restart a debounce timer:
+ *
+ *   void EXTI0_IRQHandler(void)
+ *   {
+ *       os_timer_stop_from_isr(&debounce_timer);
+ *       os_timer_start_from_isr(&debounce_timer);
+ *   }
+ *
+ * Available ISR-safe timer APIs:
+ *   os_timer_start_from_isr(timer)
+ *   os_timer_stop_from_isr(timer)
+ *   os_timer_reset_from_isr(timer)
+ *   os_timer_change_period_from_isr(timer, new_period)
+ */
 
 /* ========== Timer Callback ========== */
 

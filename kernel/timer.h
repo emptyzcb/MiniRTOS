@@ -1,4 +1,4 @@
-#ifndef OS_TIMER_H
+﻿#ifndef OS_TIMER_H
 #define OS_TIMER_H
 
 #include "os_types.h"
@@ -42,7 +42,12 @@ os_status_t os_timer_stop(os_timer_t *timer, os_tick_t timeout);
 os_status_t os_timer_reset(os_timer_t *timer, os_tick_t timeout);
 os_status_t os_timer_change_period(os_timer_t *timer, os_tick_t new_period,
                                    os_tick_t timeout);
-bool os_timer_is_active(os_timer_t *timer);
+
+
+os_status_t os_timer_start_from_isr(os_timer_t *timer);
+os_status_t os_timer_stop_from_isr(os_timer_t *timer);
+os_status_t os_timer_reset_from_isr(os_timer_t *timer);
+os_status_t os_timer_change_period_from_isr(os_timer_t *timer, os_tick_t new_period);
 
 /* Called from os_kernel_tick_increment() */
 void os_timer_tick(void);
