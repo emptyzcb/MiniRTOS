@@ -1,4 +1,4 @@
-/*
+﻿/*
  * port_m0.c - Port Layer for ARM Cortex-M0 (STM32F030)
  *
  * Hardware abstraction for Cortex-M0.
@@ -154,7 +154,7 @@ void os_port_yield(void)
 void os_port_systick_init(uint32_t freq_hz)
 {
     /* STM32F030: SystemCoreClock = 48 MHz */
-    uint32_t reload = 48000000UL / freq_hz;
+    uint32_t reload = OS_CONFIG_CPU_CLOCK_HZ / freq_hz;
     if (reload > SYSTICK_LOAD_MAX) {
         reload = SYSTICK_LOAD_MAX;
     }

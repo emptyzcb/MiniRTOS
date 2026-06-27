@@ -1,4 +1,4 @@
-#ifndef OS_CONFIG_H
+﻿#ifndef OS_CONFIG_H
 #define OS_CONFIG_H
 
 /* ========== OS Kernel Configuration ========== */
@@ -8,6 +8,9 @@
 
 /* System tick rate (Hz) */
 #define OS_CONFIG_TICK_RATE_HZ         1000
+
+/* CPU core clock frequency (Hz). STM32F103 default: 72 MHz */
+#define OS_CONFIG_CPU_CLOCK_HZ          72000000
 
 /* Default task stack size (in bytes) */
 #define OS_CONFIG_DEFAULT_STACK_SIZE    512

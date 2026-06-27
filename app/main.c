@@ -1,5 +1,5 @@
 ﻿/*
- * main.c - MiniOS Demo Application (v0.7.0)
+ * main.c - MiniOS Demo Application (v0.8.0)
  *
  * Demonstrates all OS features:
  *   - Task creation with different priorities

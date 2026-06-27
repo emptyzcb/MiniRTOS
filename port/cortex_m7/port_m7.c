@@ -1,4 +1,4 @@
-/*
+﻿/*
  * port_m7.c - Port Layer for ARM Cortex-M7 (STM32F746)
  *
  * Hardware abstraction for Cortex-M7 with double-precision FPU.
@@ -202,7 +202,7 @@ void os_port_yield(void)
 void os_port_systick_init(uint32_t freq_hz)
 {
     /* STM32F746: SystemCoreClock = 216 MHz */
-    uint32_t reload = 216000000UL / freq_hz;
+    uint32_t reload = OS_CONFIG_CPU_CLOCK_HZ / freq_hz;
     if (reload > SYSTICK_LOAD_MAX) {
         reload = SYSTICK_LOAD_MAX;
     }
@@ -309,8 +309,8 @@ char* _sbrk(int incr)
  * when the FPU has been used. D16-D31 are 16 x 64-bit = 32 x 32-bit words.
  *
  * EXC_RETURN bit 4:
- *   0 → extended frame (FPU registers stacked by hardware)
- *   1 → basic frame (no FPU)
+ *   0 鈫?extended frame (FPU registers stacked by hardware)
+ *   1 鈫?basic frame (no FPU)
  *
  * Stack frame with FPU active (double-precision):
  *   Hardware: R0-R3, R12, LR, PC, xPSR, S0-S15, FPSCR, reserved (26 words)

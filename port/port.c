@@ -1,4 +1,4 @@
-/*
+﻿/*
  * port.c - Port Layer for ARM Cortex-M3
  *
  * Hardware abstraction for STM32 (Cortex-M3/M4).
@@ -194,6 +194,11 @@ void os_port_isr_exit(void)
 
 /* ========== PendSV & SysTick ========== */
 
+void os_port_context_switch(void)
+{
+    os_port_yield();
+}
+
 void os_port_yield(void)
 {
     /* Set PendSV bit to trigger context switch */
@@ -204,7 +209,7 @@ void os_port_systick_init(uint32_t freq_hz)
 {
     /* Calculate reload value */
     /* Assuming SystemCoreClock = 72MHz for STM32F103 */
-    uint32_t reload = 72000000UL / freq_hz;
+    uint32_t reload = OS_CONFIG_CPU_CLOCK_HZ / freq_hz;
     if (reload > SYSTICK_LOAD_MAX) {
         reload = SYSTICK_LOAD_MAX;
     }

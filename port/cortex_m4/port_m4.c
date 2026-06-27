@@ -1,4 +1,4 @@
-/*
+﻿/*
  * port_m4.c - Port Layer for ARM Cortex-M4 (STM32F407)
  *
  * Hardware abstraction for Cortex-M4 with single-precision FPU.
@@ -214,7 +214,7 @@ void os_port_yield(void)
 void os_port_systick_init(uint32_t freq_hz)
 {
     /* STM32F407: SystemCoreClock = 168 MHz */
-    uint32_t reload = 168000000UL / freq_hz;
+    uint32_t reload = OS_CONFIG_CPU_CLOCK_HZ / freq_hz;
     if (reload > SYSTICK_LOAD_MAX) {
         reload = SYSTICK_LOAD_MAX;
     }
@@ -319,8 +319,8 @@ char* _sbrk(int incr)
  *
  * Key difference from M3: saves/restores S16-S31 if the task
  * has used the FPU. EXC_RETURN bit 4 indicates FPU state:
- *   bit4 = 0 → extended frame (FPU registers stacked)
- *   bit4 = 1 → basic frame (no FPU registers)
+ *   bit4 = 0 鈫?extended frame (FPU registers stacked)
+ *   bit4 = 1 鈫?basic frame (no FPU registers)
  *
  * Stack frame with FPU active:
  *   Hardware: R0-R3, R12, LR, PC, xPSR, S0-S15, FPSCR, reserved (26 words)
