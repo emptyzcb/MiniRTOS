@@ -152,11 +152,10 @@ static void idle_task_func(void *param)
                     idle_hooks[i]();
                 }
             }
-        } else {
-#ifndef TEST_HOST_BUILD
-            __asm volatile("wfi");
-#endif
         }
+#ifndef TEST_HOST_BUILD
+        __asm volatile("wfi");
+#endif
     }
 }
 

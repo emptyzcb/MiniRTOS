@@ -1,5 +1,5 @@
 ﻿/*
- * main.c - MiniOS Demo Application (v0.8.0)
+ * main.c - MiniOS Demo Application (v0.8.1)
  *
  * Demonstrates all OS features:
  *   - Task creation with different priorities
@@ -99,7 +99,6 @@ static volatile uint32_t idle_tick_count = 0;
 static void my_idle_hook(void)
 {
     idle_tick_count++;
-    __asm volatile("wfi");
 }
 
 /* ========== Task 1: Queue Producer ========== */
