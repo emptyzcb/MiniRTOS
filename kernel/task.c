@@ -52,6 +52,7 @@ static uint32_t idle_hook_count = 0;
 
 /* Stack overflow hook */
 static os_stack_overflow_hook_t stack_overflow_hook = NULL;
+static os_task_delete_hook_t task_delete_hook = NULL;
 
 /* Currently running task - defined in port.c for assembly access */
 extern os_tcb_t *current_task_ptr;
@@ -391,6 +392,11 @@ os_status_t os_task_delete(os_task_handle_t handle)
         tcb->state = OS_TASK_DELETED;
         tcb->pending_delete = 1;
 
+        /* Call delete hook before deferred cleanup */
+        if (task_delete_hook != NULL) {
+            task_delete_hook((os_task_handle_t)tcb, tcb->name);
+        }
+
         /* Add to deferred delete list for cleanup after context switch */
         tcb->next = deferred_delete_list;
         deferred_delete_list = tcb;
@@ -420,6 +426,11 @@ os_status_t os_task_delete(os_task_handle_t handle)
     }
 
     tcb->state = OS_TASK_DELETED;
+
+    /* Call delete hook before freeing resources */
+    if (task_delete_hook != NULL) {
+        task_delete_hook((os_task_handle_t)tcb, tcb->name);
+    }
 
 #if OS_CONFIG_USE_TRACE
     os_trace_record(OS_TRACE_TASK_DELETE, (uint32_t)tcb, 0);
@@ -775,4 +786,11 @@ os_status_t os_task_unregister_idle_hook(os_idle_hook_t hook)
 void os_task_set_stack_overflow_hook(os_stack_overflow_hook_t hook)
 {
     stack_overflow_hook = hook;
+}
+
+/* ========== Task Delete Hook ========== */
+
+void os_task_set_delete_hook(os_task_delete_hook_t hook)
+{
+    task_delete_hook = hook;
 }

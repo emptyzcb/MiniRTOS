@@ -1,5 +1,5 @@
 ﻿/*
- * main.c - MiniOS Demo Application (v0.8.1)
+ * main.c - MiniOS Demo Application (v0.9.0)
  *
  * Demonstrates all OS features:
  *   - Task creation with different priorities
@@ -30,6 +30,7 @@ static uint32_t shared_counter = 0;
 static volatile uint32_t malloc_fail_count = 0;
 static volatile uint32_t tick_hook_count = 0;
 static volatile uint32_t overflow_detected = 0;
+static volatile uint32_t task_delete_count = 0;
 
 /* Queue: 10 items of uint32_t */
 static os_queue_t demo_queue;
@@ -58,6 +59,16 @@ static os_task_handle_t consumer_task_handle;
 
 /* Mailbox: single-element signaling */
 static os_mailbox_t alarm_mailbox;
+
+/* ========== Task Delete Hook Demo ========== */
+
+static void my_task_delete_hook(os_task_handle_t handle, const char *name)
+{
+    task_delete_count++;
+    (void)handle;
+    (void)name;
+    /* In production: clean up resources owned by this task */
+}
 
 /* ========== ISR-Safe Timer Example ==========
  *
@@ -235,6 +246,7 @@ static void monitor_task(void *param)
         (void)malloc_fail_count;
         (void)tick_hook_count;
         (void)overflow_detected;
+        (void)task_delete_count;
 
         OS_DELAY_SEC(3);
     }
@@ -282,6 +294,7 @@ int main(void)
     os_heap_set_malloc_failed_hook(my_malloc_failed_hook);
     os_task_set_stack_overflow_hook(my_stack_overflow_hook);
     os_kernel_register_tick_hook(my_tick_hook);
+    os_task_set_delete_hook(my_task_delete_hook);
 
     /* Create synchronization objects */
     os_queue_create(&demo_queue, sizeof(uint32_t), 10);

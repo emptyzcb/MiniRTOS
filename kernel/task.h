@@ -129,4 +129,11 @@ typedef void (*os_stack_overflow_hook_t)(os_task_handle_t handle, const char *ta
 
 void os_task_set_stack_overflow_hook(os_stack_overflow_hook_t hook);
 
+/* ========== Task Delete Hook ========== */
 
+/* Called when a task is about to be deleted. */
+typedef void (*os_task_delete_hook_t)(os_task_handle_t handle, const char *name);
+
+void os_task_set_delete_hook(os_task_delete_hook_t hook);
+
+#endif /* OS_TASK_H */
