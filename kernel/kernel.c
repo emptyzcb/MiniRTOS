@@ -1,4 +1,4 @@
-﻿/*
+/*
  * kernel.c - OS Kernel Core
  *
  * Initializes all kernel subsystems and manages the system tick.
@@ -28,7 +28,7 @@
 #include "trace.h"
 #endif
 
-#define OS_VERSION "MiniOS v0.9.0"
+#define OS_VERSION "MiniOS v0.9.1"
 
 /* ========== Internal Data ========== */
 

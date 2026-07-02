@@ -1,5 +1,5 @@
-﻿/*
- * main.c - MiniOS Demo Application (v0.9.0)
+/*
+ * main.c - MiniOS Demo Application (v0.9.1)
  *
  * Demonstrates all OS features:
  *   - Task creation with different priorities
@@ -247,6 +247,7 @@ static void monitor_task(void *param)
         (void)tick_hook_count;
         (void)overflow_detected;
         (void)task_delete_count;
+        (void)os_timer_get_name(&heartbeat_timer); /* Timer name now stored */
 
         OS_DELAY_SEC(3);
     }

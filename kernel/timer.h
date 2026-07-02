@@ -1,4 +1,4 @@
-﻿#ifndef OS_TIMER_H
+#ifndef OS_TIMER_H
 #define OS_TIMER_H
 
 #include "os_types.h"
@@ -26,6 +26,7 @@ typedef struct os_timer {
     os_tick_t           remaining;      /* Ticks remaining until expiry */
     os_timer_type_t     type;           /* One-shot or auto-reload */
     bool                active;         /* Is the timer running? */
+    char                name[OS_CONFIG_MAX_NAME_LEN];  /* Timer name for debugging */
     struct os_timer     *next;          /* Linked list pointer */
 } os_timer_t;
 
@@ -51,6 +52,9 @@ os_status_t os_timer_change_period_from_isr(os_timer_t *timer, os_tick_t new_per
 
 /* Called from os_kernel_tick_increment() */
 void os_timer_tick(void);
+
+/* Get timer name (for debugging) */
+const char* os_timer_get_name(os_timer_t *timer);
 
 #endif /* OS_CONFIG_USE_SOFTWARE_TIMERS */
 
