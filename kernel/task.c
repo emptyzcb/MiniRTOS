@@ -780,6 +780,7 @@ os_status_t os_task_unregister_idle_hook(os_idle_hook_t hook)
 
     os_sched_exit_critical();
     return OS_ERR_PARAM;
+}
 
 /* ========== Stack Overflow Hook ========== */
 
