@@ -331,6 +331,8 @@ void test_suite_heap4(void) {
 | EG-05 | `test_eventgroup_wait_all` | 等待全部位 | 全部满足才返回 |
 | EG-06 | `test_eventgroup_clear_on_exit` | 退出时清除 | 匹配位被清除 |
 | EG-07 | `test_eventgroup_delete` | 删除事件组 | 资源释放 |
+| EG-08 | `test_eventgroup_clear_from_isr` | ISR 清除事件位 | 指定位清零 |
+| EG-09 | `test_eventgroup_get_from_isr` | ISR 获取事件位 | 返回当前位 |
 
 ### 3.9 内存池测试 (`test_mempool.c`)
 

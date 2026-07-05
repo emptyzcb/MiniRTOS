@@ -129,6 +129,17 @@
 #define OS_MUTEX_UNLOCK(m)             os_mutex_unlock(m)
 #endif
 
+/* Event group convenience macros */
+#if OS_CONFIG_USE_EVENTGROUP
+#define OS_EVENT_SET(e, bits)          os_eventgroup_set_bits(e, bits)
+#define OS_EVENT_SET_FROM_ISR(e, bits) os_eventgroup_set_bits_from_isr(e, bits)
+#define OS_EVENT_CLEAR(e, bits)        os_eventgroup_clear_bits(e, bits)
+#define OS_EVENT_CLEAR_FROM_ISR(e, bits) os_eventgroup_clear_bits_from_isr(e, bits)
+#define OS_EVENT_GET(e)                os_eventgroup_get_bits(e)
+#define OS_EVENT_GET_FROM_ISR(e)       os_eventgroup_get_bits_from_isr(e)
+#define OS_EVENT_WAIT(e, bits, opts, t) os_eventgroup_wait_bits(e, bits, opts, t)
+#endif
+
 /* Mailbox convenience macros */
 #if OS_CONFIG_USE_MAILBOX
 #define OS_MAILBOX_SEND(m, item, t)    os_mailbox_send(m, item, t)
@@ -144,4 +155,4 @@
 #define OS_TIMER_CHANGE_PERIOD_FROM_ISR(t, p) os_timer_change_period_from_isr(t, p)
 #endif
 
-
+#endif /* OS_H */

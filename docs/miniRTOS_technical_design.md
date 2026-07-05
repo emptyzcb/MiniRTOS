@@ -1378,8 +1378,10 @@ PendSV_Handler:
 | `os_eventgroup_set_bits(eg, bits)` | 设置事件位 | `os_status_t` |
 | `os_eventgroup_set_bits_from_isr(eg, bits)` | 设置 (ISR 安全) | `os_status_t` |
 | `os_eventgroup_clear_bits(eg, bits)` | 清除事件位 | `os_status_t` |
+| `os_eventgroup_clear_bits_from_isr(eg, bits)` | 清除事件位 (ISR 安全) | `os_status_t` |
 | `os_eventgroup_wait_bits(eg, bits, opts, timeout)` | 等待事件位 | `uint32_t` |
 | `os_eventgroup_get_bits(eg)` | 获取当前位 | `uint32_t` |
+| `os_eventgroup_get_bits_from_isr(eg)` | 获取当前位 (ISR 安全) | `uint32_t` |
 
 ### 12.10 新增便捷宏 (v0.2.0)
 
@@ -1395,6 +1397,13 @@ PendSV_Handler:
 | `OS_SEM_TAKE(s, t)` | `os_sem_take(s, t)` | 信号量获取 |
 | `OS_MUTEX_LOCK(m, t)` | `os_mutex_lock(m, t)` | 互斥锁加锁 |
 | `OS_MUTEX_UNLOCK(m)` | `os_mutex_unlock(m)` | 互斥锁解锁 |
+| `OS_EVENT_SET(e, bits)` | `os_eventgroup_set_bits(e, bits)` | 设置事件位 |
+| `OS_EVENT_SET_FROM_ISR(e, bits)` | `os_eventgroup_set_bits_from_isr(e, bits)` | ISR 中设置事件位 |
+| `OS_EVENT_CLEAR(e, bits)` | `os_eventgroup_clear_bits(e, bits)` | 清除事件位 |
+| `OS_EVENT_CLEAR_FROM_ISR(e, bits)` | `os_eventgroup_clear_bits_from_isr(e, bits)` | ISR 中清除事件位 |
+| `OS_EVENT_GET(e)` | `os_eventgroup_get_bits(e)` | 获取事件位 |
+| `OS_EVENT_GET_FROM_ISR(e)` | `os_eventgroup_get_bits_from_isr(e)` | ISR 中获取事件位 |
+| `OS_EVENT_WAIT(e, bits, opts, t)` | `os_eventgroup_wait_bits(e, bits, opts, t)` | 等待事件位 |
 
 ---
 

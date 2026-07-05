@@ -30,10 +30,12 @@ os_status_t os_eventgroup_delete(os_eventgroup_t *eg);
 os_status_t os_eventgroup_set_bits(os_eventgroup_t *eg, uint32_t bits);
 os_status_t os_eventgroup_set_bits_from_isr(os_eventgroup_t *eg, uint32_t bits);
 os_status_t os_eventgroup_clear_bits(os_eventgroup_t *eg, uint32_t bits);
+os_status_t os_eventgroup_clear_bits_from_isr(os_eventgroup_t *eg, uint32_t bits);
 
 uint32_t os_eventgroup_wait_bits(os_eventgroup_t *eg, uint32_t bits_to_wait,
                                  uint32_t options, os_tick_t timeout);
 uint32_t os_eventgroup_get_bits(os_eventgroup_t *eg);
+uint32_t os_eventgroup_get_bits_from_isr(os_eventgroup_t *eg);
 
 /* Internal: remove a task from event group blocked list */
 void os_eventgroup_remove_task(struct os_eventgroup *eg, struct os_tcb *tcb);

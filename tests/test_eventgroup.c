@@ -49,6 +49,26 @@ TEST_CASE(test_eventgroup_clear) {
     TEST_ASSERT_EQUAL(0x0A, os_eventgroup_get_bits(&eg));
 }
 
+TEST_CASE(test_eventgroup_clear_from_isr) {
+    eg_test_setup();
+    os_eventgroup_t eg;
+    os_eventgroup_create(&eg);
+
+    os_eventgroup_set_bits(&eg, 0x0F);
+    os_status_t ret = os_eventgroup_clear_bits_from_isr(&eg, 0x03);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(0x0C, os_eventgroup_get_bits(&eg));
+}
+
+TEST_CASE(test_eventgroup_get_from_isr) {
+    eg_test_setup();
+    os_eventgroup_t eg;
+    os_eventgroup_create(&eg);
+
+    os_eventgroup_set_bits(&eg, 0xA5);
+    TEST_ASSERT_EQUAL(0xA5, os_eventgroup_get_bits_from_isr(&eg));
+}
+
 TEST_CASE(test_eventgroup_wait_any_immediate) {
     eg_test_setup();
     os_eventgroup_t eg;
@@ -115,7 +135,9 @@ TEST_CASE(test_eventgroup_param_errors) {
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_eventgroup_delete(NULL));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_eventgroup_set_bits(NULL, 0x01));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_eventgroup_clear_bits(NULL, 0x01));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_eventgroup_clear_bits_from_isr(NULL, 0x01));
     TEST_ASSERT_EQUAL(0, os_eventgroup_get_bits(NULL));
+    TEST_ASSERT_EQUAL(0, os_eventgroup_get_bits_from_isr(NULL));
 }
 
 void test_suite_eventgroup(void) {
@@ -123,6 +145,8 @@ void test_suite_eventgroup(void) {
     RUN_TEST(test_eventgroup_create);
     RUN_TEST(test_eventgroup_set_get);
     RUN_TEST(test_eventgroup_clear);
+    RUN_TEST(test_eventgroup_clear_from_isr);
+    RUN_TEST(test_eventgroup_get_from_isr);
     RUN_TEST(test_eventgroup_wait_any_immediate);
     RUN_TEST(test_eventgroup_wait_all_immediate);
     RUN_TEST(test_eventgroup_wait_none);

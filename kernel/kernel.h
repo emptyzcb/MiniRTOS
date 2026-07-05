@@ -52,4 +52,4 @@ typedef void (*os_tick_hook_t)(void);
 os_status_t os_kernel_register_tick_hook(os_tick_hook_t hook);
 os_status_t os_kernel_unregister_tick_hook(os_tick_hook_t hook);
 
-
+#endif /* OS_KERNEL_H */

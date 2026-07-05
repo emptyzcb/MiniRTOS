@@ -230,6 +230,17 @@ os_status_t os_eventgroup_clear_bits(os_eventgroup_t *eg, uint32_t bits)
     return OS_OK;
 }
 
+os_status_t os_eventgroup_clear_bits_from_isr(os_eventgroup_t *eg, uint32_t bits)
+{
+    if (eg == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+    eg->bits &= ~bits;
+    os_sched_exit_critical();
+
+    return OS_OK;
+}
+
 uint32_t os_eventgroup_wait_bits(os_eventgroup_t *eg, uint32_t bits_to_wait,
                                  uint32_t options, os_tick_t timeout)
 {
@@ -279,6 +290,19 @@ uint32_t os_eventgroup_wait_bits(os_eventgroup_t *eg, uint32_t bits_to_wait,
 }
 
 uint32_t os_eventgroup_get_bits(os_eventgroup_t *eg)
+{
+    uint32_t bits;
+
+    if (eg == NULL) return 0;
+
+    os_sched_enter_critical();
+    bits = eg->bits;
+    os_sched_exit_critical();
+
+    return bits;
+}
+
+uint32_t os_eventgroup_get_bits_from_isr(os_eventgroup_t *eg)
 {
     uint32_t bits;
 

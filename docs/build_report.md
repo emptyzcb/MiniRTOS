@@ -353,8 +353,10 @@ os_eventgroup_delete(eg);
 os_eventgroup_set_bits(eg, bits);           // 设置事件位
 os_eventgroup_set_bits_from_isr(eg, bits);  // ISR 安全设置
 os_eventgroup_clear_bits(eg, bits);         // 清除事件位
+os_eventgroup_clear_bits_from_isr(eg, bits);// ISR 安全清除
 os_eventgroup_wait_bits(eg, bits, options, timeout);  // 等待事件位
 os_eventgroup_get_bits(eg);                 // 查询当前位
+os_eventgroup_get_bits_from_isr(eg);        // ISR 安全查询
 ```
 
 ---
