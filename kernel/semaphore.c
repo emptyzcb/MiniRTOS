@@ -180,6 +180,25 @@ os_status_t os_sem_take(os_sem_t *sem, os_tick_t timeout)
     return OS_OK;
 }
 
+os_status_t os_sem_take_from_isr(os_sem_t *sem)
+{
+    if (sem == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+
+    if (sem->count > 0) {
+        sem->count--;
+#if OS_CONFIG_USE_TRACE
+        os_trace_record(OS_TRACE_SEM_TAKE, (uint32_t)sem, sem->count);
+#endif
+        os_sched_exit_critical();
+        return OS_OK;
+    }
+
+    os_sched_exit_critical();
+    return OS_ERR_EMPTY;
+}
+
 os_status_t os_sem_give(os_sem_t *sem)
 {
     os_tcb_t *woken_tcb;
@@ -251,6 +270,19 @@ uint32_t os_sem_get_count(os_sem_t *sem)
 {
     if (sem == NULL) return 0;
     return sem->count;
+}
+
+uint32_t os_sem_get_count_from_isr(os_sem_t *sem)
+{
+    uint32_t count;
+
+    if (sem == NULL) return 0;
+
+    os_sched_enter_critical();
+    count = sem->count;
+    os_sched_exit_critical();
+
+    return count;
 }
 
 void os_sem_remove_task(os_sem_t *sem, os_tcb_t *tcb)

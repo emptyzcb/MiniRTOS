@@ -1343,9 +1343,11 @@ PendSV_Handler:
 | `os_sem_create_counting(sem, max, init)` | 创建计数信号量 | `os_status_t` |
 | `os_sem_delete(sem)` | 删除信号量 | `os_status_t` |
 | `os_sem_take(sem, timeout)` | 获取 (P 操作) | `os_status_t` |
+| `os_sem_take_from_isr(sem)` | 获取 (ISR 安全) | `os_status_t` |
 | `os_sem_give(sem)` | 释放 (V 操作) | `os_status_t` |
 | `os_sem_give_from_isr(sem)` | 释放 (ISR 安全) | `os_status_t` |
 | `os_sem_get_count(sem)` | 获取当前计数 | `uint32_t` |
+| `os_sem_get_count_from_isr(sem)` | 获取当前计数 (ISR 安全) | `uint32_t` |
 
 ### 12.7 互斥锁 API (v0.2.0)
 
@@ -1394,7 +1396,11 @@ PendSV_Handler:
 | `OS_QUEUE_OVERWRITE_FROM_ISR(q, item)` | `os_queue_overwrite_from_isr(q, item)` | ISR 中单元素队列覆盖写入 |
 | `OS_QUEUE_COUNT_FROM_ISR(q)` | `os_queue_get_count_from_isr(q)` | ISR 中读取队列元素数 |
 | `OS_SEM_GIVE(s)` | `os_sem_give(s)` | 信号量释放 |
+| `OS_SEM_GIVE_FROM_ISR(s)` | `os_sem_give_from_isr(s)` | ISR 中释放信号量 |
 | `OS_SEM_TAKE(s, t)` | `os_sem_take(s, t)` | 信号量获取 |
+| `OS_SEM_TAKE_FROM_ISR(s)` | `os_sem_take_from_isr(s)` | ISR 中获取信号量 |
+| `OS_SEM_COUNT(s)` | `os_sem_get_count(s)` | 获取信号量计数 |
+| `OS_SEM_COUNT_FROM_ISR(s)` | `os_sem_get_count_from_isr(s)` | ISR 中获取信号量计数 |
 | `OS_MUTEX_LOCK(m, t)` | `os_mutex_lock(m, t)` | 互斥锁加锁 |
 | `OS_MUTEX_UNLOCK(m)` | `os_mutex_unlock(m)` | 互斥锁解锁 |
 | `OS_EVENT_SET(e, bits)` | `os_eventgroup_set_bits(e, bits)` | 设置事件位 |
@@ -1659,8 +1665,10 @@ typedef struct os_sem {
 | `os_sem_create_counting(sem, max, init)` | 创建计数信号量 |
 | `os_sem_delete(sem)` | 删除信号量 (唤醒所有等待者) |
 | `os_sem_take(sem, timeout)` | 获取 (P 操作) |
+| `os_sem_take_from_isr(sem)` | ISR 安全获取 |
 | `os_sem_give(sem)` | 释放 (V 操作) |
 | `os_sem_give_from_isr(sem)` | ISR 安全释放 |
+| `os_sem_get_count_from_isr(sem)` | ISR 安全查询计数 |
 
 ---
 

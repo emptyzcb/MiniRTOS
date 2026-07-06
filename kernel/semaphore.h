@@ -25,10 +25,12 @@ os_status_t os_sem_create_counting(os_sem_t *sem, uint32_t max_count,
 os_status_t os_sem_delete(os_sem_t *sem);
 
 os_status_t os_sem_take(os_sem_t *sem, os_tick_t timeout);
+os_status_t os_sem_take_from_isr(os_sem_t *sem);
 os_status_t os_sem_give(os_sem_t *sem);
 os_status_t os_sem_give_from_isr(os_sem_t *sem);
 
 uint32_t os_sem_get_count(os_sem_t *sem);
+uint32_t os_sem_get_count_from_isr(os_sem_t *sem);
 
 /* Internal: remove a task from semaphore blocked list */
 void os_sem_remove_task(struct os_sem *sem, struct os_tcb *tcb);

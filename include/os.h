@@ -120,7 +120,11 @@
 /* Semaphore convenience macros */
 #if OS_CONFIG_USE_SEMAPHORE
 #define OS_SEM_GIVE(s)                  os_sem_give(s)
+#define OS_SEM_GIVE_FROM_ISR(s)         os_sem_give_from_isr(s)
 #define OS_SEM_TAKE(s, t)              os_sem_take(s, t)
+#define OS_SEM_TAKE_FROM_ISR(s)         os_sem_take_from_isr(s)
+#define OS_SEM_COUNT(s)                 os_sem_get_count(s)
+#define OS_SEM_COUNT_FROM_ISR(s)        os_sem_get_count_from_isr(s)
 #endif
 
 /* Mutex convenience macros */

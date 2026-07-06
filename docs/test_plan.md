@@ -295,6 +295,8 @@ void test_suite_heap4(void) {
 | SM-05 | `test_sem_give_max` | 超过最大值释放 | 返回 OS_ERR_FULL |
 | SM-06 | `test_sem_binary_limit` | 二值信号量上限 | 最大值为 1 |
 | SM-07 | `test_sem_delete` | 删除信号量 | 资源释放 |
+| SM-08 | `test_sem_take_from_isr` | ISR 获取信号量 | 成功递减或返回 OS_ERR_EMPTY |
+| SM-09 | `test_sem_get_count_from_isr` | ISR 查询计数 | 返回当前计数 |
 
 ### 3.6 互斥锁测试 (`test_mutex.c`)
 

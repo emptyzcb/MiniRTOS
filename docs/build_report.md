@@ -253,8 +253,10 @@ os_sem_create_binary(sem);
 os_sem_create_counting(sem, max_count, initial_count);
 os_sem_delete(sem);
 os_sem_take(sem, timeout);          // 获取 (P 操作)
+os_sem_take_from_isr(sem);          // ISR 安全获取
 os_sem_give(sem);                   // 释放 (V 操作)
 os_sem_give_from_isr(sem);          // ISR 安全释放
+os_sem_get_count_from_isr(sem);     // ISR 安全查询计数
 ```
 
 **关键行为**: `os_sem_give()` 使用直接传递模式 - 如果有等待者，直接唤醒任务而不增加计数。

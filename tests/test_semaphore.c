@@ -53,6 +53,31 @@ TEST_CASE(test_sem_give_take) {
     TEST_ASSERT_EQUAL(0, os_sem_get_count(&sem));
 }
 
+TEST_CASE(test_sem_take_from_isr) {
+    sem_test_setup();
+    os_sem_t sem;
+    os_sem_create_counting(&sem, 3, 2);
+
+    os_status_t ret = os_sem_take_from_isr(&sem);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(1, os_sem_get_count(&sem));
+
+    ret = os_sem_take_from_isr(&sem);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT_EQUAL(0, os_sem_get_count(&sem));
+
+    ret = os_sem_take_from_isr(&sem);
+    TEST_ASSERT_EQUAL(OS_ERR_EMPTY, ret);
+}
+
+TEST_CASE(test_sem_get_count_from_isr) {
+    sem_test_setup();
+    os_sem_t sem;
+    os_sem_create_counting(&sem, 5, 3);
+
+    TEST_ASSERT_EQUAL(3, os_sem_get_count_from_isr(&sem));
+}
+
 TEST_CASE(test_sem_take_empty) {
     sem_test_setup();
     os_sem_t sem;
@@ -97,8 +122,10 @@ TEST_CASE(test_sem_param_errors) {
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_sem_create_binary(NULL));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_sem_create_counting(NULL, 10, 5));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_sem_take(NULL, OS_WAIT_NONE));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_sem_take_from_isr(NULL));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_sem_give(NULL));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_sem_delete(NULL));
+    TEST_ASSERT_EQUAL(0, os_sem_get_count_from_isr(NULL));
 }
 
 void test_suite_semaphore(void) {
@@ -106,6 +133,8 @@ void test_suite_semaphore(void) {
     RUN_TEST(test_sem_create_binary);
     RUN_TEST(test_sem_create_counting);
     RUN_TEST(test_sem_give_take);
+    RUN_TEST(test_sem_take_from_isr);
+    RUN_TEST(test_sem_get_count_from_isr);
     RUN_TEST(test_sem_take_empty);
     RUN_TEST(test_sem_give_max);
     RUN_TEST(test_sem_binary_limit);
