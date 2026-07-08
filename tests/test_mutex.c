@@ -25,6 +25,8 @@ TEST_CASE(test_mutex_create) {
     os_status_t ret = os_mutex_create(&mtx);
     TEST_ASSERT_EQUAL(OS_OK, ret);
     TEST_ASSERT_NULL(os_mutex_get_owner(&mtx));
+    TEST_ASSERT(!os_mutex_is_locked(&mtx));
+    TEST_ASSERT_EQUAL(0, os_mutex_get_lock_count(&mtx));
 }
 
 TEST_CASE(test_mutex_lock_unlock) {
@@ -35,10 +37,14 @@ TEST_CASE(test_mutex_lock_unlock) {
     os_status_t ret = os_mutex_lock(&mtx, OS_WAIT_NONE);
     TEST_ASSERT_EQUAL(OS_OK, ret);
     TEST_ASSERT_NOT_NULL(os_mutex_get_owner(&mtx));
+    TEST_ASSERT(os_mutex_is_locked(&mtx));
+    TEST_ASSERT_EQUAL(1, os_mutex_get_lock_count(&mtx));
 
     ret = os_mutex_unlock(&mtx);
     TEST_ASSERT_EQUAL(OS_OK, ret);
     TEST_ASSERT_NULL(os_mutex_get_owner(&mtx));
+    TEST_ASSERT(!os_mutex_is_locked(&mtx));
+    TEST_ASSERT_EQUAL(0, os_mutex_get_lock_count(&mtx));
 }
 
 TEST_CASE(test_mutex_recursive) {
@@ -49,16 +55,20 @@ TEST_CASE(test_mutex_recursive) {
     os_mutex_lock(&mtx, OS_WAIT_NONE);
     os_mutex_lock(&mtx, OS_WAIT_NONE);
     os_mutex_lock(&mtx, OS_WAIT_NONE);
+    TEST_ASSERT_EQUAL(3, os_mutex_get_lock_count(&mtx));
 
     /* Should unlock 3 times before fully released */
     os_mutex_unlock(&mtx);
     TEST_ASSERT_NOT_NULL(os_mutex_get_owner(&mtx));
+    TEST_ASSERT_EQUAL(2, os_mutex_get_lock_count(&mtx));
 
     os_mutex_unlock(&mtx);
     TEST_ASSERT_NOT_NULL(os_mutex_get_owner(&mtx));
+    TEST_ASSERT_EQUAL(1, os_mutex_get_lock_count(&mtx));
 
     os_mutex_unlock(&mtx);
     TEST_ASSERT_NULL(os_mutex_get_owner(&mtx));
+    TEST_ASSERT_EQUAL(0, os_mutex_get_lock_count(&mtx));
 }
 
 TEST_CASE(test_mutex_unlock_not_owner) {
@@ -122,6 +132,8 @@ TEST_CASE(test_mutex_param_errors) {
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mutex_unlock(NULL));
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_mutex_delete(NULL));
     TEST_ASSERT_NULL(os_mutex_get_owner(NULL));
+    TEST_ASSERT(!os_mutex_is_locked(NULL));
+    TEST_ASSERT_EQUAL(0, os_mutex_get_lock_count(NULL));
 }
 
 void test_suite_mutex(void) {

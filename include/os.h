@@ -131,6 +131,8 @@
 #if OS_CONFIG_USE_MUTEX
 #define OS_MUTEX_LOCK(m, t)            os_mutex_lock(m, t)
 #define OS_MUTEX_UNLOCK(m)             os_mutex_unlock(m)
+#define OS_MUTEX_IS_LOCKED(m)          os_mutex_is_locked(m)
+#define OS_MUTEX_LOCK_COUNT(m)         os_mutex_get_lock_count(m)
 #endif
 
 /* Event group convenience macros */

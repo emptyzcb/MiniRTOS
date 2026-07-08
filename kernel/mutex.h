@@ -25,6 +25,8 @@ os_status_t os_mutex_delete(os_mutex_t *mutex);
 os_status_t os_mutex_lock(os_mutex_t *mutex, os_tick_t timeout);
 os_status_t os_mutex_unlock(os_mutex_t *mutex);
 struct os_tcb* os_mutex_get_owner(os_mutex_t *mutex);
+bool os_mutex_is_locked(os_mutex_t *mutex);
+uint32_t os_mutex_get_lock_count(os_mutex_t *mutex);
 
 /* Internal: remove a task from mutex blocked list */
 void os_mutex_remove_task(struct os_mutex *mutex, struct os_tcb *tcb);

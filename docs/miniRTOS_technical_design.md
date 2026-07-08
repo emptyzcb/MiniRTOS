@@ -1358,6 +1358,8 @@ PendSV_Handler:
 | `os_mutex_lock(mutex, timeout)` | 加锁 (支持递归) | `os_status_t` |
 | `os_mutex_unlock(mutex)` | 解锁 | `os_status_t` |
 | `os_mutex_get_owner(mutex)` | 查询持有者 | `os_tcb_t*` |
+| `os_mutex_is_locked(mutex)` | 查询是否已锁定 | `bool` |
+| `os_mutex_get_lock_count(mutex)` | 查询递归锁深度 | `uint32_t` |
 
 ### 12.8 软件定时器 API (v0.2.0)
 
@@ -1403,6 +1405,8 @@ PendSV_Handler:
 | `OS_SEM_COUNT_FROM_ISR(s)` | `os_sem_get_count_from_isr(s)` | ISR 中获取信号量计数 |
 | `OS_MUTEX_LOCK(m, t)` | `os_mutex_lock(m, t)` | 互斥锁加锁 |
 | `OS_MUTEX_UNLOCK(m)` | `os_mutex_unlock(m)` | 互斥锁解锁 |
+| `OS_MUTEX_IS_LOCKED(m)` | `os_mutex_is_locked(m)` | 查询互斥锁是否已锁定 |
+| `OS_MUTEX_LOCK_COUNT(m)` | `os_mutex_get_lock_count(m)` | 查询互斥锁递归深度 |
 | `OS_EVENT_SET(e, bits)` | `os_eventgroup_set_bits(e, bits)` | 设置事件位 |
 | `OS_EVENT_SET_FROM_ISR(e, bits)` | `os_eventgroup_set_bits_from_isr(e, bits)` | ISR 中设置事件位 |
 | `OS_EVENT_CLEAR(e, bits)` | `os_eventgroup_clear_bits(e, bits)` | 清除事件位 |

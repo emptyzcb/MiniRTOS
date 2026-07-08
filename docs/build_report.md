@@ -287,6 +287,8 @@ os_mutex_delete(mutex);
 os_mutex_lock(mutex, timeout);      // 加锁 (支持超时)
 os_mutex_unlock(mutex);             // 解锁
 os_mutex_get_owner(mutex);          // 查询持有者
+os_mutex_is_locked(mutex);          // 查询是否已锁定
+os_mutex_get_lock_count(mutex);     // 查询递归锁深度
 ```
 
 **优先级继承流程**:

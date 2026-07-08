@@ -309,6 +309,8 @@ void test_suite_heap4(void) {
 | MX-05 | `test_mutex_priority_inherit` | 优先级继承 | 持有者优先级提升 |
 | MX-06 | `test_mutex_priority_restore` | 优先级恢复 | 解锁后恢复原优先级 |
 | MX-07 | `test_mutex_delete` | 删除互斥锁 | 资源释放 |
+| MX-08 | `test_mutex_lock_unlock` | 查询锁定状态 | owner/is_locked/lock_count 正确 |
+| MX-09 | `test_mutex_recursive` | 查询递归深度 | lock_count 随加解锁变化 |
 
 ### 3.7 软件定时器测试 (`test_timer.c`)
 

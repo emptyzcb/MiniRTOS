@@ -272,6 +272,32 @@ os_tcb_t* os_mutex_get_owner(os_mutex_t *mutex)
     return mutex->owner;
 }
 
+bool os_mutex_is_locked(os_mutex_t *mutex)
+{
+    bool locked;
+
+    if (mutex == NULL) return false;
+
+    os_sched_enter_critical();
+    locked = (mutex->owner != NULL);
+    os_sched_exit_critical();
+
+    return locked;
+}
+
+uint32_t os_mutex_get_lock_count(os_mutex_t *mutex)
+{
+    uint32_t count;
+
+    if (mutex == NULL) return 0;
+
+    os_sched_enter_critical();
+    count = mutex->lock_count;
+    os_sched_exit_critical();
+
+    return count;
+}
+
 void os_mutex_remove_task(os_mutex_t *mutex, os_tcb_t *tcb)
 {
     if (mutex == NULL || tcb == NULL) return;
