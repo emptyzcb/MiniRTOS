@@ -32,6 +32,7 @@ TEST_CASE(test_notify_send) {
     os_tcb_t *tcb = (os_tcb_t*)h;
     TEST_ASSERT_EQUAL(1, tcb->notify_pending);
     TEST_ASSERT_EQUAL(42, tcb->notify_value);
+    TEST_ASSERT(os_task_notify_is_pending(h));
 }
 
 TEST_CASE(test_notify_overwrite) {
@@ -45,6 +46,24 @@ TEST_CASE(test_notify_overwrite) {
 
     os_tcb_t *tcb = (os_tcb_t*)h;
     TEST_ASSERT_EQUAL(20, tcb->notify_value);
+}
+
+TEST_CASE(test_notify_clear) {
+    notify_test_setup();
+    os_stack_t stack[128];
+    os_task_handle_t h;
+    os_task_create((os_task_func_t)0x2, "T1", NULL, 2, stack, sizeof(stack), &h);
+
+    os_task_notify(h, 77);
+    TEST_ASSERT(os_task_notify_is_pending(h));
+
+    os_status_t ret = os_task_notify_clear(h);
+    TEST_ASSERT_EQUAL(OS_OK, ret);
+    TEST_ASSERT(!os_task_notify_is_pending(h));
+
+    os_tcb_t *tcb = (os_tcb_t*)h;
+    TEST_ASSERT_EQUAL(0, tcb->notify_pending);
+    TEST_ASSERT_EQUAL(0, tcb->notify_value);
 }
 
 TEST_CASE(test_notify_wait_immediate) {
@@ -62,6 +81,7 @@ TEST_CASE(test_notify_wait_immediate) {
     os_status_t ret = os_task_notify_wait(&val, OS_WAIT_NONE);
     TEST_ASSERT_EQUAL(OS_OK, ret);
     TEST_ASSERT_EQUAL(99, val);
+    TEST_ASSERT(!os_task_notify_is_pending(h));
 }
 
 TEST_CASE(test_notify_wait_timeout) {
@@ -79,12 +99,15 @@ TEST_CASE(test_notify_wait_timeout) {
 
 TEST_CASE(test_notify_param_errors) {
     TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_task_notify(NULL, 0));
+    TEST_ASSERT(!os_task_notify_is_pending(NULL));
+    TEST_ASSERT_EQUAL(OS_ERR_PARAM, os_task_notify_clear(NULL));
 }
 
 void test_suite_notify(void) {
     printf("\n=== Test Suite: Task Notification ===\n");
     RUN_TEST(test_notify_send);
     RUN_TEST(test_notify_overwrite);
+    RUN_TEST(test_notify_clear);
     RUN_TEST(test_notify_wait_immediate);
     RUN_TEST(test_notify_wait_timeout);
     RUN_TEST(test_notify_param_errors);

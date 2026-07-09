@@ -367,6 +367,8 @@ void test_suite_heap4(void) {
 | NT-01 | `test_notify_send` | 发送通知 | 值正确传递 |
 | NT-02 | `test_notify_wait` | 等待通知 | 收到正确值 |
 | NT-03 | `test_notify_overwrite` | 多次发送覆盖 | 只保留最新值 |
+| NT-04 | `test_notify_clear` | 清除通知 | pending 和 value 被清零 |
+| NT-05 | `test_notify_send` | 查询通知状态 | pending 状态正确 |
 
 ### 3.12 软件看门狗测试 (`test_watchdog.c`)
 

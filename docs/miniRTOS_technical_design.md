@@ -1414,6 +1414,11 @@ PendSV_Handler:
 | `OS_EVENT_GET(e)` | `os_eventgroup_get_bits(e)` | 获取事件位 |
 | `OS_EVENT_GET_FROM_ISR(e)` | `os_eventgroup_get_bits_from_isr(e)` | ISR 中获取事件位 |
 | `OS_EVENT_WAIT(e, bits, opts, t)` | `os_eventgroup_wait_bits(e, bits, opts, t)` | 等待事件位 |
+| `OS_NOTIFY(h, value)` | `os_task_notify(h, value)` | 发送任务通知 |
+| `OS_NOTIFY_FROM_ISR(h, value)` | `os_task_notify_from_isr(h, value)` | ISR 中发送任务通知 |
+| `OS_NOTIFY_WAIT(value_out, t)` | `os_task_notify_wait(value_out, t)` | 等待任务通知 |
+| `OS_NOTIFY_IS_PENDING(h)` | `os_task_notify_is_pending(h)` | 查询通知是否待处理 |
+| `OS_NOTIFY_CLEAR(h)` | `os_task_notify_clear(h)` | 清除任务通知 |
 
 ---
 
@@ -2030,6 +2035,22 @@ void isr_handler(void)
 /* config/os_config.h */
 #define OS_CONFIG_USE_MAILBOX   1   // 启用邮箱模块 (设为 0 可裁剪)
 ```
+
+---
+
+## 24. 任务通知 (notify.c) — v0.5.0 新增
+
+任务通知为每个任务提供一个轻量级的单值通知槽，适合简单事件唤醒和状态值传递。相比队列和邮箱，它不需要额外分配 IPC 对象。
+
+### 24.1 API 参考
+
+| 函数 | 说明 | 返回值 |
+|------|------|--------|
+| `os_task_notify(handle, value)` | 发送通知并覆盖旧值 | `os_status_t` |
+| `os_task_notify_from_isr(handle, value)` | ISR 安全发送通知 | `os_status_t` |
+| `os_task_notify_wait(value_out, timeout)` | 等待通知并取出值 | `os_status_t` |
+| `os_task_notify_is_pending(handle)` | 查询通知是否待处理 | `bool` |
+| `os_task_notify_clear(handle)` | 清除待处理通知和值 | `os_status_t` |
 
 ---
 

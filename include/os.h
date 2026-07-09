@@ -153,6 +153,15 @@
 #define OS_MAILBOX_RECEIVE(m, item, t) os_mailbox_receive(m, item, t)
 #endif
 
+/* Task notification convenience macros */
+#if OS_CONFIG_USE_TASK_NOTIFY
+#define OS_NOTIFY(h, value)             os_task_notify(h, value)
+#define OS_NOTIFY_FROM_ISR(h, value)    os_task_notify_from_isr(h, value)
+#define OS_NOTIFY_WAIT(value_out, t)    os_task_notify_wait(value_out, t)
+#define OS_NOTIFY_IS_PENDING(h)         os_task_notify_is_pending(h)
+#define OS_NOTIFY_CLEAR(h)              os_task_notify_clear(h)
+#endif
+
 /* Timer ISR convenience macros */
 #if OS_CONFIG_USE_SOFTWARE_TIMERS
 #define OS_TIMER_START_FROM_ISR(t)       os_timer_start_from_isr(t)

@@ -470,6 +470,21 @@ os_mempool_owns(pool, ptr);                           // 检查指针归属
 
 ---
 
+### 12. 任务通知 (`kernel/notify.c`)
+
+**用途**: 每个任务内置一个轻量级单值通知槽，用于简单事件唤醒和状态值传递。
+
+**API**:
+```c
+os_task_notify(handle, value);           // 发送通知
+os_task_notify_from_isr(handle, value);  // ISR 安全发送
+os_task_notify_wait(value_out, timeout); // 等待并取出通知
+os_task_notify_is_pending(handle);       // 查询是否有待处理通知
+os_task_notify_clear(handle);            // 清除待处理通知
+```
+
+---
+
 ## 构建说明
 
 ### 工具链要求

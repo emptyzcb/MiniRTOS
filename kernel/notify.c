@@ -123,4 +123,32 @@ os_status_t os_task_notify_wait(uint32_t *value_out, os_tick_t timeout)
     return OS_ERR_TIMEOUT;
 }
 
+bool os_task_notify_is_pending(os_task_handle_t handle)
+{
+    os_tcb_t *tcb = (os_tcb_t*)handle;
+    bool pending;
+
+    if (tcb == NULL) return false;
+
+    os_sched_enter_critical();
+    pending = (tcb->notify_pending != 0);
+    os_sched_exit_critical();
+
+    return pending;
+}
+
+os_status_t os_task_notify_clear(os_task_handle_t handle)
+{
+    os_tcb_t *tcb = (os_tcb_t*)handle;
+
+    if (tcb == NULL) return OS_ERR_PARAM;
+
+    os_sched_enter_critical();
+    tcb->notify_pending = 0;
+    tcb->notify_value = 0;
+    os_sched_exit_critical();
+
+    return OS_OK;
+}
+
 #endif /* OS_CONFIG_USE_TASK_NOTIFY */

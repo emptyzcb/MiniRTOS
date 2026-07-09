@@ -26,6 +26,16 @@ os_status_t os_task_notify_from_isr(os_task_handle_t handle, uint32_t value);
  */
 os_status_t os_task_notify_wait(uint32_t *value_out, os_tick_t timeout);
 
+/*
+ * Check whether a task has a pending notification.
+ */
+bool os_task_notify_is_pending(os_task_handle_t handle);
+
+/*
+ * Clear a task's pending notification without reading the value.
+ */
+os_status_t os_task_notify_clear(os_task_handle_t handle);
+
 #endif /* OS_CONFIG_USE_TASK_NOTIFY */
 
 #endif /* OS_NOTIFY_H */
